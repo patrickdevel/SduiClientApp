@@ -1135,19 +1135,42 @@ async function chats(){
   }catch(e){fail(e);}
 }
 /* Neuer Chat: Kontakte aus der API, sonst die Mitglieder deiner eigenen Chats */
-let NCU=null;
 const uName=u=>u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||u.user?.firstname||""} ${u.lastname||u.user?.lastname||""}`.trim()||"Unbekannt";
 const uId=u=>u.id??u.user?.id??u.uuid;
-async function contactsAll(){
-  if(NCU)return NCU;
-  for(const t of ["users/self/chat-contacts","channels/chats/users","users/self/contacts"]){
-    try{const r=await api(t,{params:{search:"",page:1}});if(Array.isArray(r)&&r.length)return NCU=r;}catch(_){}
+const NCEP=["users/self/chat-contacts","channels/chats/users","users/self/contacts"];
+const isStu=x=>/schüler/i.test(x.meta?.subtitle||x.user?.meta?.subtitle||"")||/student/i.test(x.type||x.user?.type||"");
+async function mapLimit(arr,n,fn){let i=0;await Promise.all(Array.from({length:Math.min(n,arr.length)},async()=>{while(i<arr.length){const k=i++;await fn(arr[k]);}}));}
+let NCST=null; // Zustand bleibt erhalten: erneutes Öffnen ist sofort da und lädt beim Scrollen weiter
+/* Lädt die nächste Seite Kontakte; liefert nur neue Einträge. Setzt st.done, wenn nichts mehr kommt. */
+async function contactsMore(st){
+  if(st.done)return[];
+  st.page++;
+  let r=null;
+  if(st.src==null){
+    for(const t of NCEP){try{const x=await api(t,{params:{search:"",page:1}});if(Array.isArray(x)&&x.length){st.src=t;r=x;break;}}catch(_){}}
+    if(st.src==null)st.src="chats";
   }
-  const cs=await api_.chats(1,"",50),m=new Map();
-  await Promise.all(cs.slice(0,30).map(async c=>{
-    try{(await api_.members(c.id)||[]).forEach(u=>{const k=uId(u);if(k!=null&&k!==me.id&&!m.has(k))m.set(k,u);});}catch(_){}
-  }));
-  return NCU=[...m.values()].sort((x,y)=>uName(x).localeCompare(uName(y),"de"));
+  const fresh=[],add=u=>{const k=uId(u);if(k==null||k===me.id||st.seen.has(k))return false;st.seen.add(k);if(!isStu(u))fresh.push(u);return true;};
+  if(st.src==="chats"){
+    // Fallback: Mitglieder deiner Chats, pro Seite 50 Chats, höchstens 5 parallel
+    const cs=await api_.chats(st.page,"",50);
+    if(!cs.length){st.done=true;return[];}
+    await mapLimit(cs,5,async c=>{
+      for(let pg=1;pg<=5;pg++){
+        let m;try{m=await api(`channels/${c.id}/users`,{params:{page:pg,search:""}});}catch(_){break;}
+        if(!Array.isArray(m)||!m.length)break;
+        let n=0;m.forEach(u=>{if(add(u))n++;});
+        if(!n)break;
+      }
+    });
+    fresh.sort((x,y)=>uName(x).localeCompare(uName(y),"de"));
+    return fresh;
+  }
+  if(r==null){r=await api(st.src,{params:{search:"",page:st.page}});}
+  if(!Array.isArray(r)||!r.length){st.done=true;return[];}
+  let n=0;r.forEach(u=>{if(add(u))n++;});
+  if(!n)st.done=true; // API ignoriert page oder nur Wiederholungen
+  return fresh;
 }
 async function startChat(id,name){
   const tries=[["POST","channels/chats",{users:[id]}],["POST","users/self/channels/chats",{users:[id]}],["POST","channels/chats",{user_id:id}],["PUT","channels/chats",{users:[id]}]];
@@ -1161,19 +1184,33 @@ async function startChat(id,name){
   }
   alert("Chat konnte nicht erstellt werden.\n\n"+log.join("\n"));
 }
+let NCIO=null;
 async function newChat(){
   V(`<div class="ncs"><div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
     <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div>
     <label class="sbox" style="margin:0">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label></div><div id="ul" style="margin-top:12px"></div>`);
   $("#nb").onclick=()=>go("chats");
-  let list=[];
-  const draw=q=>{
-    const t=q.toLowerCase(),u=list.filter(x=>!t||uName(x).toLowerCase().includes(t));
-    $("#ul").innerHTML=u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:'<p class="mu">Keine Treffer.</p>';
+  if(NCIO)NCIO.disconnect();
+  const st=NCST||(NCST={src:null,page:0,done:false,seen:new Set(),items:[]});
+  let q="",loading=false,err="";
+  const draw=()=>{
+    const t=q.toLowerCase(),u=st.items.filter(x=>!t||uName(x).toLowerCase().includes(t));
+    $("#ul").innerHTML=(u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:(st.done&&!loading?'<p class="mu">Keine Treffer.</p>':""))
+      +(err?`<p class="err">${esc(err)}</p>`:"")
+      +(st.done?"":`<div id="usent" style="min-height:48px">${loading?'<div class="spin s"></div>':""}</div>`);
+    const se=$("#usent");if(se&&NCIO&&!err)NCIO.observe(se);
   };
-  $("#ul").innerHTML='<div class="spin s"></div>';
-  try{list=(await contactsAll()).filter(x=>!/schüler/i.test(x.meta?.subtitle||x.user?.meta?.subtitle||"")&&!/student/i.test(x.type||x.user?.type||""));draw("");}catch(e){$("#ul").innerHTML=`<p class="err">${esc(e.message)}</p>`;}
-  $("#us").oninput=e=>draw(e.target.value.trim());
+  const more=async()=>{
+    if(loading||st.done||!$("#ul"))return;
+    loading=true;err="";draw();
+    try{const r=await contactsMore(st);st.items.push(...r);}
+    catch(e){err=e.message;}
+    loading=false;
+    if($("#ul"))draw();
+  };
+  NCIO=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))more();},{rootMargin:"400px"});
+  draw();more();
+  $("#us").oninput=e=>{q=e.target.value.trim();draw();};
   $("#ul").onclick=e=>{const r=e.target.closest("[data-u]");if(r)startChat(r.dataset.u,r.dataset.n);};
 }
 function newsCard(n){
