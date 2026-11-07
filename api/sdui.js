@@ -3,12 +3,16 @@
 module.exports = async (req, res) => {
   try {
     const target = new URL(req.query.u || "");
-    if (target.protocol !== "https:" || target.hostname !== "api.sdui.app") {
-      return res.status(400).json({ message: "Ungültiges Ziel" });
+    const host = target.hostname.toLowerCase();
+    const isApi = host === "api.sdui.app";
+    // Datei-Hosts (z. B. PDFs/Bilder auf CDN oder Speicher) dürfen ebenfalls geladen werden – aber nur per https, keine IP-Adressen
+    const fileHost = /(^|\.)sdui\.(app|de)$/.test(host) || /\.amazonaws\.com$/.test(host) || /\.cloudfront\.net$/.test(host);
+    if (target.protocol !== "https:" || /^[\d.]+$/.test(host) || host.includes(":") || (!isApi && !fileHost)) {
+      return res.status(400).json({ message: "Ungültiges Ziel: " + host });
     }
     // Accept des Browsers durchreichen: Bilder/Dateien kommen sonst als JSON statt als Datei zurück
     const headers = { Accept: req.headers.accept || "application/json", "User-Agent": req.headers["user-agent"] || "Mozilla/5.0" };
-    if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+    if (isApi && req.headers.authorization) headers.Authorization = req.headers.authorization;
 
     let body;
     if (!["GET", "HEAD"].includes(req.method)) {
