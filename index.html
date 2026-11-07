@@ -113,6 +113,10 @@ body.inchat #ms{flex:1}
 .cin input:not([hidden]){background:#fff;border:0;box-shadow:0 1px 8px rgba(20,20,40,.08);padding:12px 18px;min-width:0}
 .cin input:not([hidden]):focus{outline:2px solid var(--ac);background:#fff}
 .cin .ib.pl{width:44px;height:44px}
+.msg.cont{margin-top:-3px}
+.msg.imgm{width:fit-content;padding:5px}.msg.imgm .who{padding:2px 6px 4px}
+.iw{position:relative;line-height:0}.iw .nimg{margin:0;border-radius:11px}
+.tm.ov{position:absolute;right:8px;bottom:8px;background:rgba(40,40,50,.62);color:#fff;border-radius:10px;padding:2px 8px;line-height:1.4;font-size:12px}
 .intro{background:#e3f2fd;color:#0b6bbd;border-radius:10px;padding:5px 12px;margin:8px auto;width:fit-content;max-width:88%;text-align:center;font-size:12px;line-height:1.35}
 input,button{font-size:16px}
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -374,6 +378,7 @@ function logout(){token="";localStorage.removeItem("sdui_token");$("#app").style
 async function start(){
   $("#login").style.display="none";$("#app").style.display="block";buildNav();
   try{me=await api_.user();}catch(e){return logout();}
+  if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
   updateBadge();
   route();
 }
@@ -736,7 +741,11 @@ $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad")
 const ini=n=>(String(n).match(/[A-Za-zÄÖÜäöü]{2}/)||["?"])[0].toUpperCase();
 const MENU=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
 const hdr=(t,extra,info)=>`<div class="ph sticky"><div class="row" style="gap:10px;flex-wrap:nowrap"><h2>${t}</h2>${extra||""}</div><div class="row" style="gap:0;flex-wrap:nowrap"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}</button><button class="ib gr" data-act="${info}" aria-label="Info">${ic("info")}</button><div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${MENU.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
-const unreadOf=c=>c.chat?.unread_count??c.unread_count??0;
+function seenMap(){try{return JSON.parse(localStorage.getItem("sdui_seen")||"{}")||{};}catch(_){return{};}}
+function markSeen(id,t){if(!t)return;const m=seenMap();if((m[id]||0)<t){m[id]=t;try{localStorage.setItem("sdui_seen",JSON.stringify(m));}catch(_){}}}
+const unreadOf=c=>{const n=c.chat?.unread_count??c.unread_count??0;if(!n)return 0;
+  const lm=c.chat?.last_message||c.last_message,t=lm?new Date(lm.created_at).getTime():0,sn=seenMap()[String(c.chat?.id||c.id)];
+  return sn!=null&&t&&sn>=t?0:n;};
 function ctime(t){
   if(!t)return"";const d=new Date(t),n=new Date(),dd=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
   if(dd<=0)return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
@@ -837,33 +846,45 @@ function previewOf(x){
   if(x.file)return"📎 "+(x.file.name||"Datei");
   return"";
 }
-function msgHtml(x,mine){
+function msgHtml(x,mine,cont){
   if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
   if(x.content==="introductions.conversation")return `<div class="intro">${esc(HINTS[x.content])}</div>`;
   let b="";
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
-  else if(x.type==="HINT"||isKey(x.content))b=`<i>${esc(hintText(x.content))}</i>`;
+  else if(isKey(x.content))b=`<i>${esc(hintText(x.content))}</i>`;
+  else if(x.type==="HINT")b=`<i>${esc(x.content||"")}</i>`;
   else b=esc(x.content||"");
-  const f=x.file,m=f?.meta||{};
-  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:fileHtml(f.name,f.extension,f.size??m.size,m.download_uri||m.uri);
+  const f=x.file,m=f?.meta||{},isImg=!!f&&(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""));
+  const img=isImg?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:"";
   const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-  return `<div class="msg ${mine?"me":""}">${mine?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`}${b}<div class="tm">${t}</div></div>`;
+  const who=mine||cont?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`,cc=`${mine?" me":""}${cont?" cont":""}`;
+  if(isImg&&!x.content)return `<div class="msg imgm${cc}">${who}<div class="iw">${img}<div class="tm ov">${t}</div></div></div>`;
+  if(f)b+=isImg?img:fileHtml(f.name,f.extension,f.size??m.size,m.download_uri||m.uri);
+  return `<div class="msg${cc}">${who}${b}<div class="tm">${t}</div></div>`;
 }
 let CH=null;
 async function openChat(id,canPost=true,name="Chat",ch=null){
   CH={id,canPost,name,ch:ch||id,msgs:[],page:1,file:null};
   load();document.body.classList.add("inchat");
-  try{CH.msgs=await api_.msgs(id,1);drawChat(true);}catch(e){fail(e);}
+  try{
+    const sv=seenMap()[String(CH.ch)]??seenMap()[String(id)];CH.seenAt=sv!=null?sv:null;
+    CH.msgs=await api_.msgs(id,1);
+    const nt=Math.max(0,...CH.msgs.map(x=>new Date(x.created_at).getTime()||0));
+    markSeen(String(id),nt);if(ch)markSeen(String(ch),nt);
+    drawChat(true);
+  }catch(e){fail(e);}
 }
 function drawChat(scroll){
   const keep=document.querySelector("#mi")?.value||"";
   const m=CH.msgs.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
-  let last="",un=false,h="";
+  let last="",un=false,h="",prev=null;
   m.forEach(x=>{
     const d=new Date(x.created_at),dl=d.toLocaleDateString("de-DE",{day:"2-digit",month:"long"}),mine=x.user?.id===me.id;
-    if(dl!==last){h+=`<div class="dsep"><span>${dl}</span></div>`;last=dl;}
-    if(!un&&x.is_read===false&&!mine){un=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
-    h+=msgHtml(x,mine);
+    let brk=false;
+    if(dl!==last){h+=`<div class="dsep"><span>${dl}</span></div>`;last=dl;brk=true;}
+    if(!un&&!mine&&(CH.seenAt!=null?d.getTime()>CH.seenAt:x.is_read===false)){un=true;brk=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
+    const sys=x.content==="introductions.conversation"||isDel(x),cont=!brk&&!sys&&prev&&prev.user?.id&&prev.user.id===x.user?.id&&!isDel(prev)&&prev.content!=="introductions.conversation";
+    h+=msgHtml(x,mine,cont);prev=x;
   });
   V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
   ${CH.done?"":'<div id="older" style="min-height:2px"></div>'}<div id="ms">${h}</div>
@@ -905,6 +926,47 @@ async function allMembers(id){
     if(!add.length)break;out.push(...add);
   }
   return out;
+}
+/* PUSH: lokale Benachrichtigungen per Polling (echter Push bei geschlossener App braucht einen Server) */
+const NK="sdui_notif";
+const nmap=()=>{try{return JSON.parse(localStorage.getItem(NK)||"null");}catch(_){return null;}};
+const pushOn=()=>"Notification"in window&&Notification.permission==="granted"&&localStorage.getItem("sdui_push")==="1";
+async function showN(title,body,id){
+  const opt={body,tag:"chat-"+id,data:{id}};
+  try{const r=await navigator.serviceWorker?.getRegistration();if(r){await r.showNotification(title,opt);return;}}catch(_){}
+  try{new Notification(title,opt);}catch(_){}
+}
+async function pollPush(){
+  if(!me||!pushOn())return;
+  try{
+    const l=await api_.chats(1,"",30),old=nmap(),nm=old||{};
+    for(const c of l){
+      const id=cid(c),raw=c.chat?.last_message||c.last_message;if(!raw)continue;
+      const t=new Date(raw.created_at).getTime(),open=CH&&String(CH.id)===id&&!document.hidden&&document.body.classList.contains("inchat");
+      if(old&&t>(nm[id]||0)&&!isDel(raw)&&raw.user?.id!==me.id&&unreadOf(c)>0&&!open)
+        await showN(c.meta?.displayname||c.code||"Neue Nachricht",previewOf(raw),id);
+      nm[id]=Math.max(nm[id]||0,t);
+    }
+    localStorage.setItem(NK,JSON.stringify(nm));
+  }catch(_){}
+}
+setInterval(pollPush,45000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)pollPush();});
+function pushCard(){
+  const ok="Notification"in window,on=pushOn();
+  return `<div class="card"><b>Benachrichtigungen</b><p class="mu">${ok?"Neue Chat-Nachrichten werden als Mitteilung angezeigt, solange die Seite oder App im Hintergrund geöffnet ist. Bei komplett geschlossener App ist das ohne eigenen Server nicht möglich.":"Dein Browser unterstützt keine Benachrichtigungen. Auf dem iPhone musst du die Seite zuerst zum Home-Bildschirm hinzufügen."}</p>${ok?`<button class="btn" id="pushb">${on?"Benachrichtigungen ausschalten":"Benachrichtigungen aktivieren"}</button>`:""}</div>`;
+}
+function bindPush(){
+  const b=$("#pushb");if(!b)return;
+  b.onclick=async()=>{
+    if(pushOn()){localStorage.setItem("sdui_push","0");}
+    else{
+      const p=await Notification.requestPermission();
+      if(p==="granted"){localStorage.setItem("sdui_push","1");localStorage.removeItem(NK);await pollPush();}
+      else alert("Benachrichtigungen sind im Browser blockiert. Bitte in den Seiteneinstellungen erlauben.");
+    }
+    profile();
+  };
 }
 async function chatInfo(){
   $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="spin s"></div>`;$("#sheet").classList.add("open");
@@ -959,7 +1021,7 @@ async function profile(){
     V(`<h2>Profil</h2><div class="card"><h3 style="margin-top:0">${esc(u.meta?.displayname||u.firstname+" "+u.lastname)}</h3>
       <p class="mu">${esc(u.meta?.subtitle||"")}</p>
       <p>Schule: ${esc(u.school?.name)}<br>Klasse: ${esc(u.grade?.name||"–")}<br>Rolle: ${esc(u.primary_role?.name||u.type)}<br>E-Mail: ${esc(u.email||"–")}</p></div>
-      ${a?`<div class="card"><b>Aktivität</b><p style="margin-bottom:0">${ic("chat")} Ungelesene Chats: <b>${a.chat?.unread_count??0}</b><br>${ic("bell")} Neue Benachrichtigungen: <b>${a.notification?.unread_count??0}</b></p></div>`:""}`);
+      ${a?`<div class="card"><b>Aktivität</b><p style="margin-bottom:0">${ic("chat")} Ungelesene Chats: <b>${a.chat?.unread_count??0}</b><br>${ic("bell")} Neue Benachrichtigungen: <b>${a.notification?.unread_count??0}</b></p></div>`:""}${pushCard()}`);bindPush();
   }catch(e){fail(e);}
 }
 
