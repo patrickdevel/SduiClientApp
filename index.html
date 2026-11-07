@@ -574,8 +574,8 @@ document.addEventListener("click",e=>{
   if(cm){cm.closest(".menu").hidden=true;chatAct(cm.dataset.cm,cm.closest(".chat").dataset.c);return;}
   const cf=e.target.closest("[data-cf]");
   if(cf){cf.closest(".menu").hidden=true;const k=cf.dataset.cf;
-    if(k==="soon")alert("Diese Ansicht ist noch nicht eingebaut.");
-    else{const was=sessionStorage.getItem("carch");sessionStorage.removeItem("cfu");sessionStorage.removeItem("carch");if(k==="unread")sessionStorage.setItem("cfu","1");if(k==="arch"&&!was)sessionStorage.setItem("carch","1");chats();}
+    if(k==="inact"){const w=sessionStorage.getItem("cina");sessionStorage.removeItem("cfu");sessionStorage.removeItem("carch");sessionStorage.removeItem("cina");if(!w)sessionStorage.setItem("cina","1");chats();}
+    else{const was=sessionStorage.getItem("carch");sessionStorage.removeItem("cfu");sessionStorage.removeItem("carch");sessionStorage.removeItem("cina");if(k==="unread")sessionStorage.setItem("cfu","1");if(k==="arch"&&!was)sessionStorage.setItem("carch","1");chats();}
     return;}
   const b=e.target.closest("#view [data-act]");if(!b)return;e.preventDefault();
   const k=b.dataset.act,n=NEWS[+b.closest(".ncard")?.dataset.ni];
@@ -946,8 +946,8 @@ function cav(n,locked){
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch(_){return[];}};
 const tog=(k,id)=>{const a=LS(k),i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);localStorage.setItem(k,JSON.stringify(a));};
 const cid=c=>String(c.chat?.id||c.id);
-function chatRow(c){
-  const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
+function chatRow(c,inact){
+  const n=c.meta?.displayname||c.code,id=cid(c),post=inact||c.chat?.can?.["post-message"]===0?0:1;
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
   const txt=previewOf(lm),un=unreadOf(c);UNR[id]=c.chat?.unread_count??c.unread_count??0;UNA[id]=un;
@@ -977,18 +977,45 @@ async function fillLast(){
 function chatAct(k,id){
   tog({pin:"sdui_pins",unread:"sdui_unread",arch:"sdui_arch"}[k],String(id));chats();
 }
+/* "Noch nicht aktiv": Kurs-Chats, die erst nach der Kurswahl freigeschaltet werden */
+const isInact=c=>{
+  if(c.is_active===false||c.chat?.is_active===false||c.active===false||c.status==="inactive"||c.chat?.status==="inactive")return true;
+  const lm=c.chat?.last_message||c.last_message;
+  return !!lm&&isKey(lm.content)&&/course|kurs/i.test(lm.content);
+};
+/* Die API liefert inaktive Chats evtl. nur mit Extra-Parameter: bekannte Varianten einmal pro Sitzung durchprobieren */
+const INP=[{status:"inactive"},{inactive:1},{is_active:0},{active:0},{filter:"inactive"},{state:"inactive"}];
+async function extraInactive(q,baseIds){
+  let k=sessionStorage.getItem("sdui_inp");
+  if(k==="-1")return[];
+  const get=i=>api("users/self/channels/chats",{params:{page:1,search:q,limit:50,...INP[i]}});
+  if(k!=null){try{return await get(+k);}catch(_){return[];}}
+  for(let i=0;i<INP.length;i++){
+    try{
+      const r=await get(i);
+      if(Array.isArray(r)&&r.some(c=>!baseIds.has(cid(c)))){sessionStorage.setItem("sdui_inp",String(i));return r;}
+    }catch(_){}
+  }
+  sessionStorage.setItem("sdui_inp","-1");return[];
+}
 async function chats(){
   load();
-  const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),car=!!sessionStorage.getItem("carch"),pins=LS("sdui_pins"),ar=LS("sdui_arch"),mk=LS("sdui_unread");
+  const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),car=!!sessionStorage.getItem("carch"),cin=!!sessionStorage.getItem("cina"),pins=LS("sdui_pins"),ar=LS("sdui_arch"),mk=LS("sdui_unread");
   try{
-    let l=(await api_.chats(1,q)).filter(c=>ar.includes(cid(c))===car);
+    const all=await api_.chats(1,q),ids=new Set(all.map(cid));
+    const ex=await extraInactive(q,ids).catch(()=>[]);
+    const inList=[...all.filter(isInact),...ex.filter(c=>!ids.has(cid(c)))].filter((c,i,a)=>a.findIndex(x=>cid(x)===cid(c))===i);
+    const inIds=new Set(inList.map(cid));
+    let l=all.filter(c=>!inIds.has(cid(c))).filter(c=>ar.includes(cid(c))===car);
+    if(cin)l=[];
     if(cfu)l=l.filter(c=>unreadOf(c)>0||mk.includes(cid(c)));
     l=l.map(c=>[c,pins.includes(cid(c))]).sort((a,b)=>b[1]-a[1]);
-    const fl=[cfu||car?["chat","all","Alle Chats anzeigen"]:["chat","unread","Nach Ungelesen filtern"],["archive","arch",car?"Archiv verlassen":"Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
+    const fl=[cfu||car?["chat","all","Alle Chats anzeigen"]:["chat","unread","Nach Ungelesen filtern"],["archive","arch",car?"Archiv verlassen":"Archivierte Gruppen"],["clock","inact",cin?"Alle Chats anzeigen":"Noch nicht aktive Chats"]];
     V(hdr("Chats",`<button class="ib pl" data-act="newchat" aria-label="Neuer Chat">${ic("plus")}</button>`,"cinfo")+
       `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu||car?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
       (car?'<h3 style="margin:0 0 10px">Archivierte Gruppen</h3>':"")+
-      (l.length?`<div class="clist">${l.map(([c])=>chatRow(c)).join("")}</div>`:`<p class="mu">${car?"Keine archivierten Chats.":"Keine Chats."}</p>`));
+      (cin?"":(l.length?`<div class="clist">${l.map(([c])=>chatRow(c)).join("")}</div>`:`<p class="mu">${car?"Keine archivierten Chats.":"Keine Chats."}</p>`))+
+      (!car&&!cfu&&inList.length?`<h2 style="font-size:22px;margin:${cin?"4px":"28px"} 0 10px">Noch nicht aktiv</h2><div class="clist">${inList.map(c=>chatRow(c,true)).join("")}</div>`:(cin?'<p class="mu">Keine inaktiven Chats.</p>':"")));
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
     document.querySelectorAll(".chat").forEach(el=>el.onclick=e=>{
       if(e.target.closest(".mw"))return;
@@ -998,22 +1025,47 @@ async function chats(){
     fillLast();
   }catch(e){fail(e);}
 }
-/* Neuer Chat (Endpunkt "users" ist geraten, Chat anlegen noch nicht eingebaut) */
+/* Neuer Chat: Kontakte aus der API, sonst die Mitglieder deiner eigenen Chats */
+let NCU=null;
+const uName=u=>u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||u.user?.firstname||""} ${u.lastname||u.user?.lastname||""}`.trim()||"Unbekannt";
+const uId=u=>u.id??u.user?.id??u.uuid;
+async function contactsAll(){
+  if(NCU)return NCU;
+  for(const t of ["users/self/chat-contacts","channels/chats/users","users/self/contacts"]){
+    try{const r=await api(t,{params:{search:"",page:1}});if(Array.isArray(r)&&r.length)return NCU=r;}catch(_){}
+  }
+  const cs=await api_.chats(1,"",50),m=new Map();
+  await Promise.all(cs.slice(0,30).map(async c=>{
+    try{(await api_.members(c.id)||[]).forEach(u=>{const k=uId(u);if(k!=null&&k!==me.id&&!m.has(k))m.set(k,u);});}catch(_){}
+  }));
+  return NCU=[...m.values()].sort((x,y)=>uName(x).localeCompare(uName(y),"de"));
+}
+async function startChat(id,name){
+  const tries=[["channels/chats",{users:[id]}],["users/self/channels/chats",{users:[id]}],["channels/chats",{user_id:id}]];
+  let err=null;
+  for(const [path,body] of tries){
+    try{
+      const r=await api(path,{method:"POST",body}),cid_=r?.id||r?.chat?.id;
+      if(cid_){openChat(String(r.chat?.id||cid_),true,name,String(r.id||cid_));return;}
+      go("chats");return;
+    }catch(e){err=e;}
+  }
+  alert("Chat konnte nicht erstellt werden: "+(err?.message||"Unbekannter Fehler"));
+}
 async function newChat(){
   V(`<div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
     <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div>
     <label class="sbox" style="margin:0 0 18px">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label><div id="ul"></div>`);
   $("#nb").onclick=()=>go("chats");
-  const fill=async q=>{
-    $("#ul").innerHTML='<div class="spin s"></div>';
-    try{
-      const r=await api("users",{params:{search:q,page:1}}),u=Array.isArray(r)?r:[];
-      $("#ul").innerHTML=u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(x.id)}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(x.meta?.displayname||(x.firstname+" "+x.lastname).trim())}</div><div class="s2">${esc(x.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:'<p class="mu">Keine Treffer.</p>';
-    }catch(e){$("#ul").innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+  let list=[];
+  const draw=q=>{
+    const t=q.toLowerCase(),u=list.filter(x=>!t||uName(x).toLowerCase().includes(t));
+    $("#ul").innerHTML=u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:'<p class="mu">Keine Treffer.</p>';
   };
-  $("#us").onchange=e=>fill(e.target.value.trim());
-  $("#ul").onclick=e=>{if(e.target.closest("[data-u]"))alert("Chat anlegen ist noch nicht eingebaut.");};
-  fill("");
+  $("#ul").innerHTML='<div class="spin s"></div>';
+  try{list=await contactsAll();draw("");}catch(e){$("#ul").innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+  $("#us").oninput=e=>draw(e.target.value.trim());
+  $("#ul").onclick=e=>{const r=e.target.closest("[data-u]");if(r)startChat(r.dataset.u,r.dataset.n);};
 }
 function newsCard(n){
   if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
