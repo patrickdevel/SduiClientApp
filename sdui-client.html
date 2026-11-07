@@ -107,6 +107,14 @@ h2{font-size:22px}
 .cin{display:flex;gap:8px;align-items:center}.cin input:not([hidden]){flex:1;margin:0;border-radius:999px}
 .fchip{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:2px 4px 2px 12px;margin-bottom:6px;font-size:13px}.fchip span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.inchat #tabbar{display:none}body.inchat .cin{bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom))}body.inchat main{padding-bottom:12px}
+input,button{font-size:16px}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+main{overflow-wrap:anywhere}
+.news-body table,.nbody table{display:block;overflow:auto;max-width:100%}
+.news-body iframe,.news-body video{max-width:100%}
+.gb{margin-top:8px}
+.btn.ghost:disabled{opacity:.4;cursor:default}
+@supports(height:100dvh){#app{min-height:100dvh}.sh-box{max-height:85dvh}}
 </style>
 </head>
 <body>
@@ -165,6 +173,12 @@ x:'<path d="M18 6 6 18M6 6l12 12"/>',
 more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
 out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
 };
+function clean(h){
+  const d=new DOMParser().parseFromString(h||"","text/html");
+  d.querySelectorAll("script,style,iframe,object,embed,link,meta,form").forEach(n=>n.remove());
+  d.body.querySelectorAll("*").forEach(n=>{[...n.attributes].forEach(a=>{if(/^on/i.test(a.name)||/^\s*javascript:/i.test(a.value))n.removeAttribute(a.name);});if(n.tagName==="A"){n.target="_blank";n.rel="noopener";}});
+  return d.body.innerHTML;
+}
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
 const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -173,9 +187,9 @@ async function api(path,{method="GET",params,body}={}){
   const u=new URL(path,BASE);
   if(params)Object.entries(params).forEach(([k,v])=>v!=null&&v!==""&&u.searchParams.set(k,v));
   const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json",...(body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token&&{Authorization:"Bearer "+token})},body:body?(body instanceof FormData?body:JSON.stringify(body)):undefined});
-  if(r.status===401){logout();throw new Error("Sitzung abgelaufen");}
+  if(r.status===401&&token){logout();throw new Error("Sitzung abgelaufen");}
   const j=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||"Fehler "+r.status);
+  if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||(r.status===401?"Benutzername oder Passwort falsch.":"Fehler "+r.status));
   return j.data;
 }
 const api_ = {
@@ -199,16 +213,19 @@ const api_ = {
 const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil"};
 function buildNav(){
   $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
-  $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();location.hash=a.dataset.p;};
+  $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();go(a.dataset.p);};
   const TABS=[["news","News","news"],["timetable","Stunden","cal"],["chats","Chats","chat"],["more","Mehr","more"]];
   $("#tabbar").innerHTML=TABS.map(([k,l,i])=>`<a class="tab" data-t="${k}">${ic(i)}<span>${l}</span>${k==="chats"?'<i class="bd" hidden></i>':""}</a>`).join("");
-  $("#tabbar").onclick=e=>{const a=e.target.closest(".tab");if(!a)return;a.dataset.t==="more"?openMore():location.hash=a.dataset.t;};
+  $("#tabbar").onclick=e=>{const a=e.target.closest(".tab");if(!a)return;a.dataset.t==="more"?openMore():go(a.dataset.t);};
 }
+function updateBadge(){api_.activity().then(a=>{const n=a.chat?.unread_count||0,b=document.querySelector(".tab .bd");if(b){b.textContent=n>99?"99+":n;b.hidden=!n;}}).catch(()=>{});}
+function go(k){location.hash==="#"+k?route():location.hash=k;}
 function route(){
   const p=(location.hash.slice(1)||"news").split("-")[0];
   document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile"].includes(p))));
   document.body.classList.remove("inchat");
+  if(me)updateBadge();
   ({news,timetable,chats,cloud,courses,profile}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
@@ -217,7 +234,7 @@ function logout(){token="";localStorage.removeItem("sdui_token");$("#app").style
 async function start(){
   $("#login").style.display="none";$("#app").style.display="block";buildNav();
   try{me=await api_.user();}catch(e){return logout();}
-  api_.activity().then(a=>{const n=a.chat?.unread_count||0,b=document.querySelector(".tab .bd");if(b){b.textContent=n>99?"99+":n;b.hidden=!n;}}).catch(()=>{});
+  updateBadge();
   route();
 }
 $("#go").onclick=async()=>{
@@ -239,18 +256,18 @@ async function news(){
     const items=await api_.news(npage);
     V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · "+ic("pin"):""}</div>
       <h3 style="margin:6px 0">${esc(n.title)}</h3>
-      <div class="news-body">${n.content_rendered||esc(n.content)}</div>
+      <div class="news-body">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>
       ${attHtml(n.attachments)}
       ${n.survey?surveyHtml(n.survey):""}</div>`).join("")+(items.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
-    $("#np").onclick=()=>{npage--;news();};$("#nn").onclick=()=>{npage++;news();};
+    $("#np").onclick=()=>{npage--;news();scrollTo(0,0);};$("#nn").onclick=()=>{npage++;news();scrollTo(0,0);};
   }catch(e){fail(e);}
 }
 function attHtml(list){
   return (list||[]).map(a=>{
     const u=a.meta?.temp_uri||a.meta?.uri||a.meta?.download_uri,d=a.meta?.download_uri||u;
     if(/^(jpe?g|png|gif|webp|bmp)$/i.test(a.extension||"")||a.file_type==="image")
-      return `<a href="${esc(d)}" target="_blank" rel="noopener"><img class="nimg" loading="lazy" src="${esc(u)}" alt="${esc(a.name)}"></a>`;
+      return `<a href="${esc(d)}" target="_blank" rel="noopener"><img class="nimg" loading="lazy" src="${esc(u)}" alt="${esc(a.name)}" onerror="this.style.display='none'"></a>`;
     return `<div><a href="${esc(d)}" target="_blank" rel="noopener">${ic("clip")} ${esc(a.name)}</a></div>`;
   }).join("");
 }
@@ -347,7 +364,7 @@ function openMore(){
 $("#sheet").onclick=e=>{
   if(e.target.classList.contains("sh-bg"))return closeSheet();
   const g=e.target.closest("[data-go],[data-out]");
-  if(g){closeSheet();g.dataset.out?logout():location.hash=g.dataset.go;}
+  if(g){closeSheet();g.dataset.out?logout():go(g.dataset.go);}
 };
 document.addEventListener("keydown",e=>e.key==="Escape"&&closeSheet());
 $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad");if(c)openSheet(ttL[+c.dataset.i]);});
@@ -366,7 +383,7 @@ async function chats(){
   }catch(e){fail(e);}
 }
 function newsCard(n){
-  if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered||esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
+  if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
   if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><span class="mu">Lade News …</span></div>`;
   return `<div class="shared">${ic("news")} <b>News nicht mehr verfügbar</b><br><span class="mu">Sie wurde gelöscht oder du hast keinen Zugriff.</span></div>`;
 }
@@ -389,6 +406,7 @@ async function openChat(id,canPost=true,name="Chat",ch=null){
   try{CH.msgs=await api_.msgs(id,1);drawChat(true);}catch(e){fail(e);}
 }
 function drawChat(scroll){
+  const keep=document.querySelector("#mi")?.value||"";
   const m=CH.msgs.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
   let last="",un=false,h="";
   m.forEach(x=>{
@@ -400,6 +418,7 @@ function drawChat(scroll){
   V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
   <button class="btn ghost" id="older" style="display:block;margin:6px auto 10px">Ältere Nachrichten laden</button><div id="ms">${h}</div>
   ${CH.canPost?`<div id="fchip"></div><div class="cin"><button class="ib pl" id="plus">${ic("plus")}</button><input type="file" id="fi" hidden><input id="mi" placeholder="Neue Nachricht"><button class="ib pl" id="sd">${ic("send")}</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`}`);
+  if(keep&&$("#mi"))$("#mi").value=keep;
   $("#bk").onclick=chats;
   $("#older").onclick=async()=>{try{const o=await api_.msgs(CH.id,CH.page+1);if(!o.length){$("#older").remove();return;}CH.page++;const ids=new Set(CH.msgs.map(x=>x.uuid));CH.msgs=CH.msgs.concat(o.filter(x=>!ids.has(x.uuid)));drawChat(false);}catch(e){alert(e.message);}};
   $("#ci").onclick=chatInfo;
@@ -497,6 +516,7 @@ $("#sres").onclick=e=>{
   $("#sres").innerHTML=`<p class="mu">${ic("check")} Ausgewählt: ${esc(c.dataset.n)} (${esc(c.dataset.sl)})</p>`;
 };
 
+$("#ident").onkeydown=$("#pw").onkeydown=e=>{if(e.key==="Enter")$("#go").click();};
 if(token)start();
 </script>
 </body>
