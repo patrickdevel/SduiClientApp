@@ -634,17 +634,20 @@ function lessonHtml(l,i){
   <div class="mu">${ic("user")} ${esc(t||"–")}${ot&&ot!==t?` <s>${esc(ot)}</s>`:""} &nbsp;${ic("room")} ${esc(r||"–")}${or&&or!==r?` <s>${esc(or)}</s>`:""}</div>
   ${o&&lname(o)!==lname(l)?`<div class="mu">statt <s>${esc(lname(o))}</s></div>`:""}${l.comment?`<div class="mu">${esc(l.comment)}</div>`:""}</div></div>`;
 }
-async function timetable(){
-  load();
+let ttTok=0;
+async function timetable(partial){
+  const tok=++ttTok,w=partial&&$("#ttw");
+  if(w){w.style.opacity=".45";w.style.pointerEvents="none";w.style.transition="opacity .15s";}else load();
   const now=new Date(),dow=(now.getDay()+6)%7;
   const mon=new Date(now);mon.setDate(now.getDate()-dow+weekOff*7);
   const fri=new Date(mon);fri.setDate(mon.getDate()+4);
   try{
     const t=await api_.timetable(iso(mon),iso(fri));
+    if(tok!==ttTok)return;
     ttL=(t.lessons||[]).sort((x,y)=>x.begins_at-y.begins_at);
     if(selDay===null)selDay=weekOff===0?Math.min(dow,4):0;
-    drawTT(mon,t.last_updated_at);
-  }catch(e){fail(e);}
+    drawTT(mon,t.last_updated_at,!!w);
+  }catch(e){if(tok!==ttTok)return;if(w){w.style.opacity="";w.style.pointerEvents="";weekOff=Math.max(-52,Math.min(52,weekOff));}fail(e);}
 }
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 function blockHtml(c,a,P,x0=0,w=100,all){
@@ -655,7 +658,7 @@ function blockHtml(c,a,P,x0=0,w=100,all){
   const col=all?((KIND[l.kind]||[])[1]||lcol(l)):lcol(l);
   return `<div class="blk ${l.kind||""}${all?" all":""}" data-i="${c.ix}" style="--c:${col};top:${(c.s-a)*P}px;height:${Math.max((c.e-c.s)*P-2,24)}px;left:${x0+c.lane*w/c.n}%;width:calc(${w/c.n}% - 2px)"><b>${name}</b>${l.comment?`<span class="qd">❝</span>`:""}<span>${pill(t,ot)}</span><span>${pill(r,or)}</span></div>`;
 }
-function drawTT(mon,upd){
+function drawTT(mon,upd,partial){
   const now=new Date(),mins=t=>{const d=new Date(t*1000);return d.getHours()*60+d.getMinutes()};
   const days=["MO","DI","MI","DO","FR"].map((n,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const all=[],ls=[];
     ttL.forEach((l,ix)=>{if(new Date(l.begins_at*1000).toDateString()===d.toDateString())(isAllDay(l)?all:ls).push({l,ix,s:mins(l.begins_at),e:mins(l.ends_at)});});
@@ -686,13 +689,15 @@ function drawTT(mon,upd){
     return h;
   };
   const mo=mon.toLocaleDateString("de-DE",{month:"short"});
-  V(hdr("Stundenplan","","tinfo")+
-  `${upd?`<div class="pillw">Stand ${esc(D2(upd))} Uhr</div>`:""}
+  const inner=`${upd?`<div class="pillw">Stand ${esc(D2(upd))} Uhr</div>`:""}
   <div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin:4px 0 2px"><button class="ib gr" id="pw_" aria-label="Vorherige Woche">${ic("left")}</button>${weekOff?'<button class="btn ghost" id="cw">Heute</button>':""}<button class="ib gr" id="nw" aria-label="Nächste Woche">${ic("right")}</button></div>
   <div class="gw"><div class="gh"><div class="gx"></div>${days.map((x,i)=>`<div class="gd ${x.d.toDateString()===now.toDateString()?"today":""}"><em class="mn">${i===0?mo:""}</em><small>${x.n}</small><b>${String(x.d.getDate()).padStart(2,"0")}</b></div>`).join("")}</div>
   <div class="gb" style="height:${H}px"><div class="gx">${axis}</div>${days.map(x=>`<div class="gc">${col(x)}</div>`).join("")}</div></div>
-  ${me?.grade?.name?`<div class="gchip">${ic("user")}<span>${esc(me.grade.name)}</span></div>`:""}`);
-  $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};if($("#cw"))$("#cw").onclick=()=>{weekOff=0;timetable();};
+  ${me?.grade?.name?`<div class="gchip">${ic("user")}<span>${esc(me.grade.name)}</span></div>`:""}`;
+  const w=partial&&$("#ttw");
+  if(w){w.style.opacity="";w.style.pointerEvents="";w.innerHTML=inner;}
+  else V(hdr("Stundenplan","","tinfo")+`<div id="ttw">${inner}</div>`);
+  $("#pw_").onclick=()=>{weekOff--;timetable(true);};$("#nw").onclick=()=>{weekOff++;timetable(true);};if($("#cw"))$("#cw").onclick=()=>{weekOff=0;timetable(true);};
 }
 /* Bottom Sheet */
 const closeSheet=()=>$("#sheet").classList.remove("open");
