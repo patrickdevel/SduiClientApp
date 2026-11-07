@@ -1016,24 +1016,35 @@ function newsCard(n){
 }
 const HINTS={"news.posted":"hat eine News geteilt","introductions.conversation":"In dieser Konversation kann sicher kommuniziert werden."};
 const isKey=t=>/^[a-z_]+(\.[a-z_]+)+$/.test(t||"");
-const hintText=k=>HINTS[k]||"Systemnachricht";
+const KURS_TXT="Sobald Schüler*innen ihre Kurswahl im Sdui Stundenplan getroffen haben, werden sie anschließend in diese Kurs-Gruppe synchronisiert. Lehrkräfte werden nach der Wahl des Kürzels hinzugefügt";
+const isNewsMsg=x=>!!x&&(x.target_type==="news"||x.content==="news.posted");
+const isSys=x=>!!x&&!isNewsMsg(x)&&!isDel(x)&&(isKey(x.content)||x.type==="HINT");
+/* Echter Text einer Systemnachricht: nie "Systemnachricht", sondern der tatsächliche Inhalt */
+function sysText(x){
+  const k=x.content||"";
+  if(HINTS[k])return HINTS[k];
+  if(/course|kurs/i.test(k))return KURS_TXT;
+  const f=[x.content_rendered,x.meta?.message,x.meta?.content,x.meta?.text,x.hint,x.text].find(v=>typeof v==="string"&&v.trim()&&!isKey(v.trim()));
+  if(f)return f.replace(/<[^>]*>/g,"").trim();
+  if(!isKey(k)&&k)return k;
+  return k;
+}
 const isDel=x=>!!(x&&(x.deleted_at||x.unset_at));
 const dupName=x=>{const n=(x?.file?.name||"").trim(),c=(x?.content||"").trim();return !!n&&!!c&&(c===n||c===n.replace(/\.[^.]+$/,""));};
 function previewOf(x){
   if(!x)return"";
   const who=x.user?.meta?.displayname||"";
   if(x.content==="news.posted"||x.target_type==="news")return(who?who+" ":"")+"hat eine News geteilt";
-  if(isKey(x.content))return hintText(x.content);
+  if(isSys(x))return sysText(x);
   if(x.content&&!dupName(x))return x.content;
   if(x.file)return"📎 "+(x.file.name||"Datei");
   return"";
 }
 function msgHtml(x,mine,cont){
   if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
-  if(x.content==="introductions.conversation")return `<div class="intro">${esc(HINTS[x.content])}</div>`;
+  if(isSys(x))return `<div class="intro">${esc(sysText(x))}</div>`;
   let b="";
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
-  else if(isKey(x.content))b=`<i>${esc(hintText(x.content))}</i>`;
   else if(x.type==="HINT")b=`<i>${esc(x.content||"")}</i>`;
   else b=dupName(x)?"":esc(x.content||"");
   const f=x.file,m=f?.meta||{},isImg=!!f&&(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""));
@@ -1068,7 +1079,7 @@ function drawChat(scroll){
     let brk=false;
     if(dl!==last){h+=`<div class="dsep"><span>${dl}</span></div>`;last=dl;brk=true;}
     if(!un&&!mine&&(CH.seenAt!=null?d.getTime()>CH.seenAt:(x.is_read===false||unSet.has(x)))){un=true;brk=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
-    const sys=x.content==="introductions.conversation"||isDel(x),cont=!brk&&!sys&&prev&&prev.user?.id&&prev.user.id===x.user?.id&&!isDel(prev)&&prev.content!=="introductions.conversation";
+    const sys=isSys(x)||isDel(x),cont=!brk&&!sys&&prev&&prev.user?.id&&prev.user.id===x.user?.id&&!isDel(prev)&&!isSys(prev);
     h+=msgHtml(x,mine,cont);prev=x;
   });
   V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
