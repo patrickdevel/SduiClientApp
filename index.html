@@ -285,6 +285,23 @@ nav a:hover:not(.on){background:#f3f3f6}
   mask-image:linear-gradient(to bottom,transparent 0,#000 58%);
 }
 .cin input:not([hidden]){background:rgba(255,255,255,.85)}
+
+/* ── Mobile Tabbar: Glass-Pill wie Chatfeld ── */
+@media(max-width:700px){
+  #tabbar{
+    left:12px;right:12px;
+    bottom:calc(12px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.72);
+    -webkit-backdrop-filter:blur(20px) saturate(1.4);
+    backdrop-filter:blur(20px) saturate(1.4);
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow:0 8px 28px rgba(20,20,40,.14);
+    padding:6px 4px;
+  }
+  .tab{padding:2px 0}
+  main{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>
