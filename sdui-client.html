@@ -63,6 +63,17 @@ nav a .ic{margin-right:6px;width:1.25em;height:1.25em;vertical-align:-.3em}
 .sh-grab{width:44px;height:5px;border-radius:9px;background:#d8d8de;margin:0 auto 14px}
 .sh-top{border-left:6px solid var(--c);padding-left:12px;margin-bottom:12px}.sh-top h3{margin:0 0 2px}
 .srow{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}.srow .ic{margin-top:3px;color:var(--mu)}
+.gw{background:#fff;border-radius:20px;padding:12px;box-shadow:0 2px 12px rgba(20,20,40,.06);overflow-x:auto}
+.gh,.gb{display:grid;grid-template-columns:42px repeat(5,minmax(0,1fr));gap:4px;min-width:480px}
+.gh{margin-bottom:6px}.gd{text-align:center}.gd small{color:var(--mu);font-weight:600;font-size:11px;letter-spacing:.6px}
+.gd b{display:block;font-size:20px;font-weight:500}.gd.today b{color:var(--ac);font-weight:700}
+.gx{position:relative}.tk{position:absolute;right:4px;transform:translateY(-7px);font-size:11px;color:var(--mu)}
+.gc{position:relative;background:repeating-linear-gradient(to bottom,#ececf0 0 1px,transparent 1px var(--hp))}
+.blk{position:absolute;box-sizing:border-box;border-radius:8px;padding:4px 6px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;line-height:1.25;font-size:11.5px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,#fff);border-left:4px solid var(--c)}
+.blk b{font-size:13px}.blk.CANCLED{color:#8a8a94;background:#f1f1f3;border-color:#c9c9d1}.blk.CANCLED *{text-decoration:line-through}
+.blk.SUBSTITUTION{outline:2px solid #f59e0b;outline-offset:-2px}
+.qd{position:absolute;right:3px;top:3px}.qd .ic{width:13px;height:13px}
+.ad{background:color-mix(in srgb,var(--c) 18%,#fff);color:var(--c);border-left:4px solid var(--c);border-radius:8px;padding:4px 6px;font-size:12px;font-weight:600;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -209,7 +220,8 @@ let weekOff=0,selDay=null,ttView="day",ttL=[];
 const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const KIND={SUBSTITUTION:["Vertretung","#f59e0b"],CANCLED:["Entfall","#e5484d"],EVENT:["Event","#2f6bff"],BOOKABLE_CHANGE:["Raumänderung","#0ea5a4"],HOLIDAY:["Ferien","#8b5cf6"]};
 const fmtT=t=>new Date(t*1000).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-const lcol=l=>{const c=l.course?.subject?.color||l.course?.meta?.color||"";return /^#?[0-9a-f]{3,8}$/i.test(c)?(c[0]==="#"?c:"#"+c):"#2f6bff"};
+const lcol=l=>{let c=(l.course?.subject?.color||l.course?.meta?.color||"").replace("#","");if(c.length===3)c=[...c].map(x=>x+x).join("");return /^[0-9a-f]{6}/i.test(c)?"#"+c.slice(0,6):"#2f6bff"};
+const isAllDay=l=>l.kind==="HOLIDAY"||(l.ends_at-l.begins_at)>=6*3600;
 const lname=l=>l.meta?.displayname||l.course?.meta?.displayname||l.course?.subject?.name||l.course?.name||"Stunde";
 const sh=(x,k)=>(x[k]||[]).map(t=>t.shortcut).join(", ");
 const badge=k=>KIND[k]?`<span class="badge" style="background:${KIND[k][1]}">${KIND[k][0]}</span>`:"";
@@ -231,16 +243,33 @@ async function timetable(){
     drawTT(mon,t.last_updated_at);
   }catch(e){fail(e);}
 }
+function blockHtml(c,a,P){
+  const l=c.l,t=sh(l,"teachers"),r=sh(l,"bookables");
+  return `<div class="blk ${l.kind||""}" data-i="${c.ix}" style="--c:${lcol(l)};top:${(c.s-a)*P}px;height:${Math.max((c.e-c.s)*P-2,24)}px;left:${c.lane*100/c.n}%;width:calc(${100/c.n}% - 2px)"><b>${esc(lname(l))}</b>${l.comment?`<span class="qd">${ic("info")}</span>`:""}<span>${esc(t)}</span><span>${esc(r)}</span></div>`;
+}
 function drawTT(mon,upd){
-  const days=["Mo","Di","Mi","Do","Fr"].map((n,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return{n,d,ls:ttL.map((l,ix)=>[l,ix]).filter(([l])=>new Date(l.begins_at*1000).toDateString()===d.toDateString())};});
-  const col=x=>x.ls.map(([l,ix])=>lessonHtml(l,ix)).join("")||'<p class="mu">Keine Stunden.</p>';
-  const body=ttView==="day"?col(days[selDay]):`<div class="tt">${days.map(x=>`<div><h4>${x.n} ${x.d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</h4>${col(x)}</div>`).join("")}</div>`;
+  const now=new Date(),mins=t=>{const d=new Date(t*1000);return d.getHours()*60+d.getMinutes()};
+  const days=["MO","DI","MI","DO","FR"].map((n,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const all=[],ls=[];
+    ttL.forEach((l,ix)=>{if(new Date(l.begins_at*1000).toDateString()===d.toDateString())(isAllDay(l)?all:ls).push({l,ix,s:mins(l.begins_at),e:mins(l.ends_at)});});
+    return{n,d,all,ls};});
+  const L=days.flatMap(x=>x.ls);
+  let a=L.length?Math.min(...L.map(c=>c.s)):480,b=L.length?Math.max(...L.map(c=>c.e)):900;
+  a=Math.floor(a/60)*60;b=Math.ceil(b/60)*60;const P=1.15,H=(b-a)*P;
+  const ticks=[];for(let m=a;m<=b;m+=60)ticks.push(`<div class="tk" style="top:${(m-a)*P}px">${String(m/60).padStart(2,"0")}:00</div>`);
+  const col=x=>{
+    const it=x.ls.slice().sort((p,q)=>p.s-q.s),out=[];let cl=[],end=0,lanes=[];
+    const flush=()=>{const n=Math.max(...cl.map(c=>c.lane))+1;cl.forEach(c=>{c.n=n;out.push(c);});cl=[];lanes=[];end=0;};
+    it.forEach(c=>{if(cl.length&&c.s>=end)flush();let k=lanes.findIndex(e=>e<=c.s);if(k<0){k=lanes.length;lanes.push(0);}lanes[k]=c.e;c.lane=k;cl.push(c);end=Math.max(end,c.e);});
+    if(cl.length)flush();
+    return out.map(c=>blockHtml(c,a,P)).join("");
+  };
+  const anyAll=days.some(x=>x.all.length);
   V(`<div class="row" style="justify-content:space-between"><h2>Stundenplan</h2><div class="row"><button class="btn ghost" id="pw_">${ic("left")}</button><button class="btn ghost" id="cw">Heute</button><button class="btn ghost" id="nw">${ic("right")}</button></div></div>
-  <div class="pills">${days.map((x,i)=>`<button class="pill ${ttView==="day"&&i===selDay?"on":""}" data-d="${i}">${x.n} ${x.d.getDate()}.</button>`).join("")}<button class="pill ${ttView==="week"?"on":""}" id="wv">Woche</button></div>
-  ${body}<p class="mu">Stand: ${esc(upd?new Date(upd).toLocaleString("de-DE"):"")}</p>`);
-  $("#pw_").onclick=()=>{weekOff--;selDay=0;timetable();};$("#nw").onclick=()=>{weekOff++;selDay=0;timetable();};$("#cw").onclick=()=>{weekOff=0;selDay=null;timetable();};
-  $("#wv").onclick=()=>{ttView="week";drawTT(mon,upd);};
-  document.querySelectorAll(".pill[data-d]").forEach(b=>b.onclick=()=>{ttView="day";selDay=+b.dataset.d;drawTT(mon,upd);});
+  <div class="gw"><div class="gh"><div class="gx"></div>${days.map(x=>`<div class="gd ${x.d.toDateString()===now.toDateString()?"today":""}"><small>${x.n}</small><b>${String(x.d.getDate()).padStart(2,"0")}</b></div>`).join("")}</div>
+  ${anyAll?`<div class="gh"><div class="gx mu" style="font-size:10px">ganztägig</div>${days.map(x=>`<div>${x.all.map(c=>`<div class="ad" data-i="${c.ix}" style="--c:${(KIND[c.l.kind]||[])[1]||lcol(c.l)}">${esc(lname(c.l))}</div>`).join("")}</div>`).join("")}</div>`:""}
+  <div class="gb" style="height:${H}px;--hp:${60*P}px"><div class="gx">${ticks.join("")}</div>${days.map(x=>`<div class="gc">${col(x)}</div>`).join("")}</div></div>
+  <p class="mu">Stand: ${esc(upd?new Date(upd).toLocaleString("de-DE"):"")}</p>`);
+  $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};$("#cw").onclick=()=>{weekOff=0;timetable();};
 }
 /* Bottom Sheet */
 const closeSheet=()=>$("#sheet").classList.remove("open");
@@ -250,7 +279,7 @@ async function openSheet(l){
   const tn=x=>(x.teachers||[]).map(t=>esc(t.name||t.shortcut)+(t.name&&t.shortcut?` (${esc(t.shortcut)})`:"")).join("<br>");
   const rn=x=>(x.bookables||[]).map(b=>esc(b.name||b.shortcut)).join(", ");
   $("#sh-c").innerHTML=`<div class="sh-top" style="--c:${lcol(l)}"><h3>${esc(lname(l))} ${badge(l.kind)}</h3><div class="mu">${d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"})}</div></div>`+
-    srow("clock","Zeit",`${fmtT(l.begins_at)} – ${fmtT(l.ends_at)}${l.meta?.displayname_hour?" · "+esc(l.meta.displayname_hour):""}`)+
+    srow("clock","Zeit",`${isAllDay(l)?"Ganztägig · ":""}${fmtT(l.begins_at)} – ${fmtT(l.ends_at)}${l.meta?.displayname_hour?" · "+esc(l.meta.displayname_hour):""}`)+
     srow("user",l.kind==="SUBSTITUTION"?"Vertretung durch":"Lehrkraft",tn(l)||"–")+
     srow("room","Raum",rn(l))+srow("group","Klasse(n)",esc((l.grades||[]).map(g=>g.shortcut||g.name).join(", ")))+
     (o?srow("cal","Eigentlich geplant",`${esc(lname(o))}<br><span class="mu">${tn(o)} ${rn(o)?"· "+rn(o):""}</span>`):"")+
@@ -265,7 +294,7 @@ async function openSheet(l){
 }
 $("#sheet").onclick=e=>{if(e.target.classList.contains("sh-bg"))closeSheet();};
 document.addEventListener("keydown",e=>e.key==="Escape"&&closeSheet());
-$("#view").addEventListener("click",e=>{const c=e.target.closest(".ls");if(c)openSheet(ttL[+c.dataset.i]);});
+$("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad");if(c)openSheet(ttL[+c.dataset.i]);});
 
 /* CHATS */
 async function chats(){
