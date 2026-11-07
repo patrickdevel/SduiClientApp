@@ -1,4 +1,4 @@
-// Vercel Serverless Function: leitet Anfragen (JSON und Datei-Uploads) an die Sdui-API weiter.
+// Vercel Serverless Function: leitet Anfragen (JSON, Datei-Uploads und -Downloads) an die Sdui-API weiter.
 // Aufruf: /api/sdui?u=<url-kodierte https://api.sdui.app/v1/...-Adresse>
 module.exports = async (req, res) => {
   try {
@@ -6,7 +6,8 @@ module.exports = async (req, res) => {
     if (target.protocol !== "https:" || target.hostname !== "api.sdui.app") {
       return res.status(400).json({ message: "Ungültiges Ziel" });
     }
-    const headers = { Accept: "application/json" };
+    // Accept des Browsers durchreichen: Bilder/Dateien kommen sonst als JSON statt als Datei zurück
+    const headers = { Accept: req.headers.accept || "application/json" };
     if (req.headers.authorization) headers.Authorization = req.headers.authorization;
 
     let body;
@@ -18,10 +19,11 @@ module.exports = async (req, res) => {
     }
 
     const upstream = await fetch(target, { method: req.method, headers, body: body && body.length ? body : undefined });
-    const text = await upstream.text();
+    // Binär lesen (text() würde Bilder/PDFs zerstören)
+    const buf = Buffer.from(await upstream.arrayBuffer());
     res.status(upstream.status);
     res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/json");
-    res.send(text);
+    res.send(buf);
   } catch (e) {
     res.status(502).json({ message: "Proxy-Fehler: " + e.message });
   }
