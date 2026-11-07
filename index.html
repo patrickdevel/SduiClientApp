@@ -1210,7 +1210,7 @@ async function newChat(){
     const t=q.toLowerCase(),u=st.items.filter(x=>!t||uName(x).toLowerCase().includes(t));
     $("#ul").innerHTML=(u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:(st.done&&!loading?'<p class="mu">Keine Treffer.</p>':""))
       +(err?`<p class="err">${esc(err)}</p>`:"")
-      +`<p class="mu" style="font-size:11px;margin:10px 0 0;text-align:center">${esc((st.src||"…")+" · Stil "+st.si+" · Seite "+st.page+" · "+st.items.length+" geladen"+(st.done?" · fertig":""))}</p>`
+      +(st.done&&!loading&&!err?`<p class="mu" style="font-size:13px;margin:18px 4px 24px;text-align:center;line-height:1.45">Eventuell wurden nicht alle Nutzer geladen. Wird die gesuchte Person nicht angezeigt, starte bitte einen Chat mit ihr über sdui.app. Danach kannst du ihr auch über diesen Client schreiben.</p>`:"")
       +(st.done?"":`<div id="usent" style="min-height:48px">${loading?'<div class="spin s"></div>':""}</div>`);
     const se=$("#usent");if(se&&NCIO&&!err)NCIO.observe(se);
   };
