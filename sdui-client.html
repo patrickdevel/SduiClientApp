@@ -179,6 +179,25 @@ function clean(h){
   d.body.querySelectorAll("*").forEach(n=>{[...n.attributes].forEach(a=>{if(/^on/i.test(a.name)||/^\s*javascript:/i.test(a.value))n.removeAttribute(a.name);});if(n.tagName==="A"){n.target="_blank";n.rel="noopener";}});
   return d.body.innerHTML;
 }
+/* Dateien/Bilder brauchen den Token -> mit Authorization laden und als Blob anzeigen */
+async function authSrc(u){
+  const url=new URL(u,BASE);
+  if(url.hostname!=="api.sdui.app")return url.href;
+  const r=await fetch(PROXY?PROXY+encodeURIComponent(url.href):url.href,{headers:{Authorization:"Bearer "+token}});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return URL.createObjectURL(await r.blob());
+}
+function dlFile(u,name){
+  authSrc(u).then(h=>{const a=document.createElement("a");a.href=h;a.download=name||"";a.target="_blank";document.body.appendChild(a);a.click();a.remove();}).catch(e=>alert("Download fehlgeschlagen: "+e.message));
+}
+function hydrate(){
+  document.querySelectorAll("img[data-src]:not([data-h])").forEach(async i=>{
+    i.dataset.h=1;
+    try{i.src=await authSrc(i.dataset.src);i.style.cursor="zoom-in";i.onclick=()=>window.open(i.src,"_blank");}
+    catch(_){i.replaceWith(Object.assign(document.createElement("span"),{className:"mu",textContent:"Bild konnte nicht geladen werden"}));}
+  });
+}
+document.addEventListener("click",e=>{const a=e.target.closest("a[data-dl]");if(a){e.preventDefault();dlFile(a.dataset.dl,a.dataset.name);}});
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
 const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -245,7 +264,7 @@ $("#go").onclick=async()=>{
   }catch(e){$("#lerr").textContent=e.message==="Failed to fetch"?"Netzwerk/CORS-Fehler. Datei lokal öffnen oder CORS-Proxy nutzen.":e.message;}
 };
 const V=h=>$("#view").innerHTML=h;
-const load=()=>V('<p class="mu">Lade …</p>');
+const load=()=>{document.body.classList.remove("inchat");V('<p class="mu">Lade …</p>');};
 const fail=e=>V(`<div class="card err">${esc(e.message)}</div>`);
 
 /* NEWS */
@@ -267,8 +286,8 @@ function attHtml(list){
   return (list||[]).map(a=>{
     const u=a.meta?.temp_uri||a.meta?.uri||a.meta?.download_uri,d=a.meta?.download_uri||u;
     if(/^(jpe?g|png|gif|webp|bmp)$/i.test(a.extension||"")||a.file_type==="image")
-      return `<a href="${esc(d)}" target="_blank" rel="noopener"><img class="nimg" loading="lazy" src="${esc(u)}" alt="${esc(a.name)}" onerror="this.style.display='none'"></a>`;
-    return `<div><a href="${esc(d)}" target="_blank" rel="noopener">${ic("clip")} ${esc(a.name)}</a></div>`;
+      return `<img class="nimg" data-src="${esc(u)}" alt="${esc(a.name)}">`;
+    return `<div><a href="#" data-dl="${esc(d)}" data-name="${esc(a.name)}">${ic("clip")} ${esc(a.name)}</a></div>`;
   }).join("");
 }
 function surveyHtml(s){
@@ -395,7 +414,7 @@ function msgHtml(x,mine){
   else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
-  if(f)b+=m.has_image?`<img class="nimg" loading="lazy" src="${esc(m.content_uri||m.thumbnail_uri||m.uri)}">`:`<div><a href="${esc(m.download_uri||m.uri)}" target="_blank" rel="noopener">${ic("clip")} ${esc(f.name)}</a></div>`;
+  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" alt="${esc(f.name)}">`:`<div><a href="#" data-dl="${esc(m.download_uri||m.uri)}" data-name="${esc(f.name)}">${ic("clip")} ${esc(f.name)}</a></div>`;
   const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
   return `<div class="msg ${mine?"me":""}">${mine?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`}${b}<div class="tm">${t}</div></div>`;
 }
@@ -465,13 +484,13 @@ async function cloud(){
     V(`<div class="row"><button class="ib" id="cb_">${ic("left")}</button><h2 style="margin:0">${esc(cl.name)}</h2></div><div class="mu" style="margin:4px 0 10px">/${esc(cl.path)}</div><input id="fs" placeholder="Dateien suchen …" value="${esc(q)}">`+
       (fl.map((f,i)=>{const m=f.meta||{},dir=f.file_type==="folder"||f.type==="folder"||f.type==="directory";
         const th=m.has_image&&(m.thumbnail_uri||m.content_uri);
-        return `<div class="crow" data-f="${i}"><div class="av" style="border-radius:12px;overflow:hidden">${th?`<img src="${esc(th)}" style="width:100%;height:100%;object-fit:cover">`:ic(dir?"folder":"file")}</div><div style="min-width:0"><b style="word-break:break-word">${esc(f.name)}</b><div class="mu">${dir?"Ordner":fsize(f.size||0)} · ${new Date(f.updated_at).toLocaleDateString("de-DE")}</div></div></div>`;}).join("")||'<p class="mu">Keine Dateien.</p>'));
+        return `<div class="crow" data-f="${i}"><div class="av" style="border-radius:12px;overflow:hidden">${th?`<img data-src="${esc(th)}" style="width:100%;height:100%;object-fit:cover">`:ic(dir?"folder":"file")}</div><div style="min-width:0"><b style="word-break:break-word">${esc(f.name)}</b><div class="mu">${dir?"Ordner":fsize(f.size||0)} · ${new Date(f.updated_at).toLocaleDateString("de-DE")}</div></div></div>`;}).join("")||'<p class="mu">Keine Dateien.</p>'));
     $("#cb_").onclick=()=>{if(cl.stack.length){cl.path=cl.stack.pop();}else cl.id=null;cloud();};
     $("#fs").onchange=e=>{sessionStorage.setItem("fq",e.target.value);cloud();};
     document.querySelectorAll("[data-f]").forEach(el=>el.onclick=()=>{
       const f=fl[+el.dataset.f],m=f.meta||{};
       if(f.file_type==="folder"||f.type==="folder"||f.type==="directory"){cl.stack.push(cl.path);cl.path=m.absolute_path||f.path||f.name;cloud();}
-      else window.open(m.download_uri||m.uri||m.content_uri,"_blank","noopener");
+      else dlFile(m.download_uri||m.uri||m.content_uri,f.name);
     });
   }catch(e){fail(e);}
 }
@@ -517,6 +536,7 @@ $("#sres").onclick=e=>{
 };
 
 $("#ident").onkeydown=$("#pw").onkeydown=e=>{if(e.key==="Enter")$("#go").click();};
+new MutationObserver(hydrate).observe($("#view"),{childList:true,subtree:true});
 if(token)start();
 </script>
 </body>
