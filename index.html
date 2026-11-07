@@ -62,21 +62,21 @@ nav a .ic{margin-right:6px;width:1.25em;height:1.25em;vertical-align:-.3em}
 #sheet.open{pointer-events:auto}#sheet.open .sh-bg{opacity:1}#sheet.open .sh-box{transform:none}
 .sh-grab{width:44px;height:5px;border-radius:9px;background:#d8d8de;margin:0 auto 14px}
 .sh-top{border-left:6px solid var(--c);padding-left:12px;margin-bottom:12px}.sh-top h3{margin:0 0 2px}
-.sh-box.tall{min-height:84vh}
+.sh-box.tall{min-height:88vh;max-height:88vh;border-radius:30px 30px 0 0;padding-top:18px}.sh-box.tall .sh-grab{display:none}
 .dwrap{position:relative}
 .dh{padding:6px 20px 16px;border-bottom:1px solid var(--bd);margin:0 -20px 18px}
 .dht{display:flex;justify-content:space-between;align-items:center;min-height:42px}
-.kp{background:var(--ac);color:#fff;border-radius:999px;padding:7px 20px;font-weight:600;font-size:16px}
+.kp{background:var(--ac);color:#fff;border-radius:999px;padding:6px 20px;font-weight:600;font-size:17px}
 .dbtn{display:flex;gap:10px;align-items:center}.dbtn button{width:42px;height:42px;border:0;border-radius:50%;background:#eeeef0;display:flex;align-items:center;justify-content:center;color:#222;cursor:pointer}.dbtn button .ic{width:20px;height:20px}.dbtn #dmore{background:none;width:36px}.dbtn #dmore .ic{fill:currentColor;width:26px}
-.dt{font-size:34px;margin:8px 0 4px;line-height:1.1;overflow-wrap:anywhere;font-weight:600}
-.dd{color:var(--mu);font-size:17px;line-height:1.4}
+.dt{font-size:36px;margin:6px 0 2px;line-height:1.1;overflow-wrap:anywhere;font-weight:500}
+.dd{color:var(--mu);font-size:18px;line-height:1.35}
 .dcm{background:#fbe9ef;color:var(--ac);font-weight:600;border-radius:12px 12px 0 0;padding:14px 16px;overflow-wrap:anywhere}
 .dcard{border:1px solid var(--bd);border-radius:14px;box-shadow:0 2px 8px rgba(20,20,40,.06);overflow:hidden}.dcm+.dcard{border-radius:0 0 14px 14px;border-top:0}
-.drow{display:flex;align-items:center;gap:14px;padding:14px 16px}.drow+.drow{border-top:1px solid var(--bd)}
-.dic{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--cc) 14%,#fff);color:var(--cc)}.dic .ic{width:22px;height:22px;fill:currentColor;stroke:currentColor}
+.drow{display:flex;align-items:center;gap:14px;padding:12px 16px}.drow+.drow{border-top:1px solid var(--bd)}
+.dic{width:40px;height:40px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--cc) 14%,#fff);color:var(--cc)}.dic .ic{width:20px;height:20px;fill:currentColor;stroke:currentColor}
 .dl{flex:1;font-size:18px}
 .dv{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:62%}
-.pill{background:#fff;border-radius:999px;padding:8px 16px;box-shadow:0 2px 10px rgba(20,20,40,.13);font-size:17px;min-width:44px;text-align:center}.pill.x{text-decoration:line-through;color:#444}
+.pill{background:#fff;border-radius:999px;padding:6px 16px;box-shadow:0 2px 8px rgba(20,20,40,.1);font-size:18px;min-width:44px;text-align:center}.pill.x{text-decoration:line-through;color:#444}
 .dmenu{position:absolute;right:50px;top:50px;background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.22);z-index:3}.dmenu[hidden]{display:none}.dmi{display:flex;gap:14px;align-items:center;padding:16px 22px;font-size:17px;white-space:nowrap;cursor:pointer}.dmi .ic{color:var(--ac);width:24px;height:24px}
 .cpbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:70}
 .cp{background:#fff;border-radius:22px;width:min(92vw,520px);overflow:hidden}.cph{display:flex;justify-content:center;align-items:center;position:relative;padding:20px;border-bottom:1px solid var(--bd);font-size:22px}.cph button{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;border-radius:50%;background:#eeeef0;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -381,7 +381,11 @@ function buildNav(){
   $("#tabbar").innerHTML=TABS.map(([k,l,i])=>`<a class="tab" data-t="${k}">${ic(i)}<span>${l}</span>${k==="chats"?'<i class="bd" hidden></i>':""}</a>`).join("");
   $("#tabbar").onclick=e=>{const a=e.target.closest(".tab");if(!a)return;a.dataset.t==="more"?openMore():go(a.dataset.t);};
 }
-function updateBadge(){api_.activity().then(a=>{const n=a.chat?.unread_count||0,b=document.querySelector(".tab .bd");if(b){b.textContent=n>99?"99+":n;b.hidden=!n;}}).catch(()=>{});}
+const setBadge=n=>{const b=document.querySelector(".tab .bd");if(b){b.textContent=n>99?"99+":n;b.hidden=!n;}};
+function updateBadge(){
+  api_.chats(1,"",50).then(l=>{const mk=LS("sdui_unread"),ar=LS("sdui_arch");setBadge(l.filter(c=>{const i=cid(c);return !ar.includes(i)&&(unreadOf(c)>0||mk.includes(i));}).length);})
+  .catch(()=>api_.activity().then(a=>setBadge(a.chat?.unread_count||0)).catch(()=>{}));
+}
 function go(k){location.hash==="#"+k?route():location.hash=k;}
 function route(){
   const p=(location.hash.slice(1)||"news").split("-")[0];
@@ -765,8 +769,8 @@ async function openSheet(l){
   const cm=[l.comment,l.meta?.moved_comment].filter(Boolean).join(" · "),nm=lname(l);
   $("#sh-c").innerHTML=`<div class="dwrap" style="--cc:${c}">
     <div class="dh"><div class="dht">${KIND[l.kind]?`<span class="kp">${KIND[l.kind][0]}</span>`:"<span></span>"}<span class="dbtn"><button id="dmore" aria-label="Mehr">${ic("more")}</button><button id="dx" aria-label="Schließen">${ic("x")}</button></span></div>
-    <h2 class="dt" style="${nm.length>11?"font-size:28px":""}">${esc(nm)}</h2>
-    <div class="dd">${d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"short"})}<br>${fmtT(l.begins_at)}–${fmtT(l.ends_at)}</div></div>
+    <h2 class="dt" style="${nm.length>12?"font-size:28px":""}">${esc(nm)}</h2>
+    <div class="dd">${d.toLocaleDateString("de-DE",{weekday:"long"})}, ${String(d.getDate()).padStart(2,"0")} ${d.toLocaleDateString("de-DE",{month:"short"})}<br>${fmtT(l.begins_at)}—${fmtT(l.ends_at)}</div></div>
     <div class="dmenu" id="dmenu" hidden><div class="dmi" id="dcol">${ic("refresh")}<span>Farbe ändern</span></div></div>
     ${cm?`<div class="dcm">${esc(cm)}</div>`:""}
     <div class="dcard">${row("key","Raum",R(l),R(o))}${row("user","Lehrer",T(l),T(o))}${row("group","Klasse",G(l),G(o))}</div>
@@ -793,7 +797,8 @@ function colorPicker(l){
     const b=e.target.closest("[data-c]");if(!b)return;
     const m=colOv();m[k]=b.dataset.c;try{localStorage.setItem("sdui_subjcol",JSON.stringify(m));}catch(_){}
     bg.remove();
-    if(ttMon&&$("#ttw"))drawTT(ttMon,ttUpd,true);
+    document.querySelectorAll(".blk[data-i]:not(.all),.ls[data-i]").forEach(el=>{const x=ttL[+el.dataset.i];if(x)el.style.setProperty("--c",lcol(x));});
+    try{if(ttMon&&$("#ttw"))drawTT(ttMon,ttUpd,true);}catch(_){}
     openSheet(l);
   };
   document.body.appendChild(bg);
@@ -815,10 +820,15 @@ const ini=n=>(String(n).match(/[A-Za-zÄÖÜäöü]{2}/)||["?"])[0].toUpperCase(
 const MENU=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
 const hdr=(t,extra,info)=>`<div class="ph sticky"><div class="row" style="gap:10px;flex-wrap:nowrap"><h2>${t}</h2>${extra||""}</div><div class="row" style="gap:0;flex-wrap:nowrap"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}</button><button class="ib gr" data-act="${info}" aria-label="Info">${ic("info")}</button><div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${MENU.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
 function seenMap(){try{return JSON.parse(localStorage.getItem("sdui_seen")||"{}")||{};}catch(_){return{};}}
-function markSeen(id,t){if(!t)return;const m=seenMap();if((m[id]||0)<t){m[id]=t;try{localStorage.setItem("sdui_seen",JSON.stringify(m));}catch(_){}}}
+function seenCnt(){try{return JSON.parse(localStorage.getItem("sdui_seenc")||"{}")||{};}catch(_){return{};}}
+function markSeen(id,t,cnt){if(!t)return;const m=seenMap();if((m[id]||0)<t){m[id]=t;const k=seenCnt();if(cnt!=null)k[id]=cnt;try{localStorage.setItem("sdui_seen",JSON.stringify(m));localStorage.setItem("sdui_seenc",JSON.stringify(k));}catch(_){}}}
+const UNR={},UNA={};
 const unreadOf=c=>{const n=c.chat?.unread_count??c.unread_count??0;if(!n)return 0;
-  const lm=c.chat?.last_message||c.last_message,t=lm?new Date(lm.created_at).getTime():0,sn=seenMap()[String(c.chat?.id||c.id)];
-  return sn!=null&&t&&sn>=t?0:n;};
+  const id=String(c.chat?.id||c.id),lm=c.chat?.last_message||c.last_message,t=lm?new Date(lm.created_at).getTime():0,sn=seenMap()[id],sc=seenCnt()[id];
+  if(sn==null)return n;
+  if(t&&sn>=t)return 0;
+  if(t)return sc!=null?Math.max(1,n-sc):n;
+  return sc!=null?Math.max(0,n-sc):n;};
 function ctime(t){
   if(!t)return"";const d=new Date(t),n=new Date(),dd=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
   if(dd<=0)return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
@@ -836,11 +846,11 @@ function chatRow(c){
   const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
-  const txt=previewOf(lm),un=unreadOf(c);
+  const txt=previewOf(lm),un=unreadOf(c);UNR[id]=c.chat?.unread_count??c.unread_count??0;UNA[id]=un;
   const items=[["chat","unread",mk?"Als gelesen markieren":"Ungelesen markieren"],["pin","pin",pin?"Fixierung lösen":"Diesen Chat fixieren"],["folder","arch",ar?"Archivierung aufheben":"Chat archivieren"]];
   return `<div class="cr2 chat" ${txt?"":'data-nolm="1" '}data-c="${esc(id)}" data-ch="${esc(c.id)}" data-p="${post}" data-n="${esc(n)}">${cav(n,!post)}
   <div class="cm"><div class="cn${un||mk?" un":""}">${pin?ic("pin")+" ":""}${esc(n)}</div><div class="s">${esc(who||(c.users_count?c.users_count+" Teilnehmer":""))}</div><div class="s2">${esc(txt)}</div></div>
-  <div class="cr"><span class="lt">${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:mk?`<i class="bd" style="position:static;min-width:10px;width:10px;height:10px;padding:0"></i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+  <div class="cr"><span class="lt">${ctime(lm.created_at||c.updated_at)}</span>${un||mk?`<i class="bd" style="position:static">${un||1}</i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
 }
 const LMC={};
 async function fillLast(){
@@ -944,7 +954,9 @@ async function openChat(id,canPost=true,name="Chat",ch=null){
     const sv=seenMap()[String(CH.ch)]??seenMap()[String(id)];CH.seenAt=sv!=null?sv:null;
     CH.msgs=await api_.msgs(id,1);
     const nt=Math.max(0,...CH.msgs.map(x=>new Date(x.created_at).getTime()||0));
-    markSeen(String(id),nt);if(ch)markSeen(String(ch),nt);
+    CH.unread=UNA[String(id)]??null;
+    markSeen(String(id),nt,UNR[String(id)]);if(ch)markSeen(String(ch),nt,UNR[String(id)]);
+    updateBadge();
     drawChat(true);
   }catch(e){fail(e);}
 }
@@ -952,11 +964,12 @@ function drawChat(scroll){
   const keep=document.querySelector("#mi")?.value||"";
   const m=CH.msgs.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
   let last="",un=false,h="",prev=null;
+  const unSet=new Set(CH.seenAt==null&&CH.unread>0?m.filter(x=>x.user?.id!==me.id&&!isDel(x)).slice(-CH.unread):[]);
   m.forEach(x=>{
     const d=new Date(x.created_at),dl=d.toLocaleDateString("de-DE",{day:"2-digit",month:"long"}),mine=x.user?.id===me.id;
     let brk=false;
     if(dl!==last){h+=`<div class="dsep"><span>${dl}</span></div>`;last=dl;brk=true;}
-    if(!un&&!mine&&(CH.seenAt!=null?d.getTime()>CH.seenAt:x.is_read===false)){un=true;brk=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
+    if(!un&&!mine&&(CH.seenAt!=null?d.getTime()>CH.seenAt:(x.is_read===false||unSet.has(x)))){un=true;brk=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
     const sys=x.content==="introductions.conversation"||isDel(x),cont=!brk&&!sys&&prev&&prev.user?.id&&prev.user.id===x.user?.id&&!isDel(prev)&&prev.content!=="introductions.conversation";
     h+=msgHtml(x,mine,cont);prev=x;
   });
@@ -964,7 +977,7 @@ function drawChat(scroll){
   ${CH.done?"":'<div id="older" style="min-height:2px"></div>'}<div id="ms">${h}</div>
   ${CH.canPost?`<div id="fchip"></div><div class="cin"><button class="ib pl" id="plus">${ic("plus")}</button><input type="file" id="fi" hidden><input id="mi" placeholder="Neue Nachricht"><button class="ib pl" id="sd">${ic("send")}</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`}`);
   if(keep&&$("#mi"))$("#mi").value=keep;
-  $("#bk").onclick=chats;
+  $("#bk").onclick=()=>{const nt=Math.max(0,...CH.msgs.map(x=>new Date(x.created_at).getTime()||0));markSeen(String(CH.id),nt,UNR[String(CH.id)]);chats();setTimeout(updateBadge,300);};
   if($("#older"))new IntersectionObserver(async(es,io)=>{
     if(!es[0].isIntersecting||CH.busy)return;CH.busy=true;io.disconnect();$("#older").innerHTML='<div class="spin s"></div>';
     try{
