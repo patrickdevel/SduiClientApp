@@ -228,6 +228,11 @@ nav a:hover:not(.on){background:#f3f3f6}
 .ph.sticky>h2{border-radius:999px;transition:background-color .25s ease,box-shadow .25s ease,padding .25s ease}
 .ph.sticky.hide>h2{background:#fff;box-shadow:0 2px 12px rgba(20,20,40,.14);pointer-events:auto;display:flex;align-items:center;height:46px;padding:0 18px}
 .ph.sticky.hide:not(:has(>.row)){background:#fff;border-radius:999px;box-shadow:0 2px 12px rgba(20,20,40,.14);pointer-events:auto;width:fit-content;padding:3px 18px 3px 6px;margin-left:0}
+/* Blur-Fade oben hinter den schwebenden Header-Pills (Gegenstück zur Tabbar unten) */
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(env(safe-area-inset-top,0px) + 84px);z-index:19;pointer-events:none;opacity:0;transition:opacity .25s ease;background:rgba(246,246,248,.78);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);-webkit-mask-image:linear-gradient(to top,transparent 0,#000 70%);mask-image:linear-gradient(to top,transparent 0,#000 70%)}
+body:has(.ph.sticky.hide)::before{opacity:1}
+body.inchat::before{display:none}
+@media(prefers-reduced-motion:reduce){body::before{transition:none}}
 .clist{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(20,20,40,.08)}
 .cr2{display:flex;gap:12px;padding:12px;border-top:1px solid var(--bd);cursor:pointer;align-items:flex-start}.cr2:first-child{border-top:0}
 .av2{position:relative;width:56px;height:56px;border-radius:50%;background:#ececef;display:flex;align-items:center;justify-content:center;font-size:20px;color:#666;flex:none}
