@@ -245,8 +245,8 @@ body.inchat::before{display:none}
 .ildw .spin.s.ils{position:absolute;display:block;left:50%;top:50%;right:auto;bottom:auto;margin:-14px 0 0 -14px;width:28px;height:28px;border-width:3px;border-color:rgba(255,255,255,.65);border-top-color:var(--ac);z-index:2}
 /* PDF-Ansicht (Sdui-Look: Seiten als Karten, schwebende Pills, Blur-Fades) */
 #pv{position:fixed;inset:0;z-index:75;background:var(--bg);opacity:0;transform:translateY(24px);transition:opacity .22s ease,transform .26s cubic-bezier(.2,.8,.2,1)}
-#pv.open{opacity:1;transform:none}#pv.out{opacity:0;transform:translateY(24px)}
-.pvb{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(72px + env(safe-area-inset-top,0px)) 12px calc(84px + env(safe-area-inset-bottom,0px))}
+#pv.open{opacity:1;transform:none}#pv.out{opacity:0;transform:translateY(100%)}#pv.dg{transition:none}
+.pvb{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(72px + env(safe-area-inset-top,0px)) 12px calc(84px + env(safe-area-inset-bottom,0px))}
 .pvl{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .pvp{position:relative;width:100%;background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(20,20,40,.08);overflow:hidden}
 .pvp canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .35s ease}.pvp.rd canvas{opacity:1}
@@ -260,6 +260,9 @@ body.inchat::before{display:none}
 .pvd{display:flex;align-items:center;gap:8px;flex:none;border:0;background:#d8232a;color:#fff;border-radius:999px;height:46px;padding:0 20px;font:inherit;font-weight:600;cursor:pointer;box-shadow:0 2px 12px rgba(216,35,42,.35)}.pvd .ic{width:20px;height:20px;stroke:#fff}
 #pv::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(env(safe-area-inset-bottom,0px) + 90px);z-index:2;pointer-events:none;background:rgba(246,246,248,.78);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 70%);mask-image:linear-gradient(to bottom,transparent 0,#000 70%)}
 #pv:has(.pvb.fb)::after{display:none}
+.pve{background:#fdebe3;color:#b4441b;border-radius:14px;padding:18px 18px 16px;font-size:14px}.pve b{display:block;font-size:15px;margin-bottom:6px}.pve p{margin:0 0 14px;line-height:1.45}
+.pva .btn{background:#d8232a;border-radius:999px;padding:11px 20px;font-weight:600}
+.pvp.er{display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:13px;min-height:120px;text-align:center;padding:16px}
 .pvi{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;background:#fff;border-radius:999px;box-shadow:0 2px 12px rgba(20,20,40,.14);padding:9px 20px;font-size:14px;font-weight:500;line-height:1.2;pointer-events:none}.pvi[hidden]{display:none}
 #pv .spin.s.pvs{position:absolute;display:block;left:50%;top:50%;margin:-14px 0 0 -14px;width:28px;height:28px;border-width:3px;border-color:rgba(0,0,0,.08);border-top-color:#d8232a}
 @media(max-width:420px){.pvd span{display:none}.pvd{padding:0 14px}}
@@ -623,26 +626,75 @@ async function openPdf(uri,name){
   document.body.appendChild(el);document.body.style.overflow="hidden";
   PV={el,url:null,doc:null,io:null};
   requestAnimationFrame(()=>el.classList.add("open"));
-  el.onclick=ev=>{const b=ev.target.closest("[data-pv]");if(!b)return;if(b.dataset.pv==="x")closePdf();else dlFile(uri,name);};
+  el.onclick=ev=>{const b=ev.target.closest("[data-pv]");if(!b)return;if(b.dataset.pv==="x")closePdf();else if(b.dataset.pv==="retry")openPdf(uri,name);else dlFile(uri,name);};
+  /* Ganz oben weiter nach oben scrollen/ziehen: PDF-Ansicht schließt sich mit Animation */
+  {
+    const bx=el.querySelector(".pvb");let sy=0,pull=0,act=false,acc=0,wt=0;
+    const apply=d=>{el.classList.add("dg");el.style.transform=`translateY(${d*.55}px)`;el.style.opacity=1-Math.min(d/600,.5);};
+    const reset=()=>{el.classList.remove("dg");el.style.transform="";el.style.opacity="";};
+    bx.addEventListener("touchstart",e=>{sy=e.touches[0].clientY;pull=0;act=false;},{passive:true});
+    bx.addEventListener("touchmove",e=>{
+      const y=e.touches[0].clientY;
+      if(bx.scrollTop<=0){
+        if(!act){act=true;sy=y;}
+        pull=y-sy;
+        if(pull>0){if(e.cancelable)e.preventDefault();apply(pull);}else{pull=0;reset();}
+      }else{act=false;pull=0;}
+    },{passive:false});
+    const end=()=>{const d=pull;pull=0;act=false;reset();if(d>120)closePdf();};
+    bx.addEventListener("touchend",end);bx.addEventListener("touchcancel",end);
+    bx.addEventListener("wheel",e=>{
+      if(bx.scrollTop<=0&&e.deltaY<0){
+        acc+=-e.deltaY;apply(Math.min(acc,260));clearTimeout(wt);
+        if(acc>160){acc=0;reset();closePdf();return;}
+        wt=setTimeout(()=>{acc=0;reset();},220);
+      }else{acc=0;}
+    },{passive:true});
+  }
   const me=PV,list=el.querySelector(".pvl"),box=el.querySelector(".pvb"),ind=el.querySelector(".pvi");
   const stop=()=>{const sp=el.querySelector(".pvs");if(sp)sp.remove();};
+  const pdfMsg=e=>{
+    const n=e&&e.name||"";
+    if(n==="InvalidPDFException")return"Die PDF ist beschädigt oder ungültig.";
+    if(n==="PasswordException")return"Die PDF ist passwortgeschützt. Lade sie herunter, um sie zu öffnen.";
+    if(n==="MissingPDFException")return"Die PDF wurde auf dem Server nicht gefunden.";
+    return(e&&e.message)||"Unbekannter Fehler.";
+  };
+  const showErr=m=>{
+    if(PV!==me)return;stop();box.classList.remove("fb");if(ind)ind.hidden=true;
+    list.innerHTML=`<div class="pve"><b>PDF konnte nicht angezeigt werden</b><p>${esc(m)}</p><div class="pva"><button class="btn" data-pv="retry">Erneut versuchen</button></div></div>`;
+  };
   try{
     const bl=await authBlob(uri);if(PV!==me)return;
+    /* Prüfen, ob es wirklich eine PDF ist (sonst zeigt der Browser nur seinen eigenen Fehler) */
+    const head=new TextDecoder("latin1").decode(await bl.slice(0,1024).arrayBuffer());
+    if(!head.includes("%PDF-"))throw new Error("Die Datei ist keine gültige PDF.");
     const pdf=new Blob([bl],{type:"application/pdf"});
-    const url=me.url=URL.createObjectURL(pdf);
+    me.url=URL.createObjectURL(pdf);
+    let lib=null;
+    try{lib=await loadPdfJs();}catch(_){}
+    if(PV!==me)return;
+    if(!lib){
+      /* Bibliothek nicht erreichbar: Browser-Anzeiger als Notlösung */
+      const fr=document.createElement("iframe");fr.title=name||"PDF";fr.src=me.url+"#view=FitH";
+      fr.onload=stop;list.appendChild(fr);box.classList.add("fb");return;
+    }
+    let doc,v1;
     try{
-      const lib=await loadPdfJs();if(PV!==me)return;
-      const doc=me.doc=await lib.getDocument({data:await pdf.arrayBuffer()}).promise;if(PV!==me)return;
-      const n=doc.numPages,p1=await doc.getPage(1),v1=p1.getViewport({scale:1});
-      const pages=[];
-      for(let k=1;k<=n;k++){
-        const d=document.createElement("div");d.className="pvp";d.dataset.k=k;d.style.aspectRatio=v1.width+"/"+v1.height;
-        list.appendChild(d);pages.push(d);
-      }
-      stop();
-      if(n>1){ind.hidden=false;ind.textContent="1 / "+n;}
-      const render=async d=>{
-        if(d.dataset.r)return;d.dataset.r=1;
+      doc=me.doc=await lib.getDocument({data:await pdf.arrayBuffer()}).promise;
+      const p1=await doc.getPage(1);v1=p1.getViewport({scale:1});
+    }catch(e){throw new Error(pdfMsg(e));}
+    if(PV!==me)return;
+    const n=doc.numPages,pages=[];
+    for(let k=1;k<=n;k++){
+      const d=document.createElement("div");d.className="pvp";d.dataset.k=k;d.style.aspectRatio=v1.width+"/"+v1.height;
+      list.appendChild(d);pages.push(d);
+    }
+    stop();
+    if(n>1){ind.hidden=false;ind.textContent="1 / "+n;}
+    const render=async d=>{
+      if(d.dataset.r)return;d.dataset.r=1;
+      try{
         const pg=await doc.getPage(+d.dataset.k);if(PV!==me)return;
         const w=d.clientWidth||list.clientWidth,base=pg.getViewport({scale:1}),sc=w/base.width,dpr=Math.min(devicePixelRatio||1,2.5);
         const vp=pg.getViewport({scale:sc*dpr}),c=document.createElement("canvas");
@@ -650,28 +702,25 @@ async function openPdf(uri,name){
         d.style.aspectRatio=base.width+"/"+base.height;
         await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;if(PV!==me)return;
         d.appendChild(c);d.classList.add("rd");
-      };
-      const vis=new Map();
-      const io=me.io=new IntersectionObserver(es=>{
-        es.forEach(e=>{if(e.isIntersecting){render(e.target);vis.set(e.target,e.intersectionRatio);}else vis.delete(e.target);});
-        if(n>1&&vis.size){let best=null,r=-1;vis.forEach((v,t)=>{if(v>r||(v===r&&+t.dataset.k<+best.dataset.k)){r=v;best=t;}});if(best)ind.textContent=best.dataset.k+" / "+n;}
-      },{root:box,rootMargin:"600px 0px",threshold:[0,.25,.5,.75,1]});
-      pages.forEach(d=>io.observe(d));
-    }catch(libErr){
-      /* Fallback: Browser-eigener Anzeiger */
-      if(PV!==me)return;
-      list.innerHTML="";const fr=document.createElement("iframe");fr.title=name||"PDF";fr.src=url+"#view=FitH";
-      fr.onload=stop;list.appendChild(fr);box.classList.add("fb");
-    }
+      }catch(_){
+        if(PV!==me)return;d.classList.add("er");d.textContent="Seite "+d.dataset.k+" konnte nicht geladen werden.";
+      }
+    };
+    const vis=new Map();
+    const io=me.io=new IntersectionObserver(es=>{
+      es.forEach(e=>{if(e.isIntersecting){render(e.target);vis.set(e.target,e.intersectionRatio);}else vis.delete(e.target);});
+      if(n>1&&vis.size){let best=null,r=-1;vis.forEach((v,t)=>{if(v>r||(v===r&&+t.dataset.k<+best.dataset.k)){r=v;best=t;}});if(best)ind.textContent=best.dataset.k+" / "+n;}
+    },{root:box,rootMargin:"600px 0px",threshold:[0,.25,.5,.75,1]});
+    pages.forEach(d=>io.observe(d));
   }catch(err){
-    stop();list.innerHTML=`<div class="warn" style="margin:0">PDF konnte nicht angezeigt werden. Du kannst sie oben herunterladen.<br><small>${esc(err&&err.message||"")}</small></div>`;
+    showErr(err&&err.message||"Unbekannter Fehler.");
   }
 }
 function closePdf(now){
   if(!PV)return;const {el,url,io,doc}=PV;PV=null;if(io)io.disconnect();if(doc)try{doc.destroy();}catch(_){}
   const rm=()=>{el.remove();if(url)URL.revokeObjectURL(url);if(!document.querySelector("#lb.open"))document.body.style.overflow="";};
   if(now){rm();return;}
-  el.classList.remove("open");el.classList.add("out");setTimeout(rm,220);
+  el.classList.remove("open");el.classList.add("out");setTimeout(rm,280);
 }
 addEventListener("keydown",e=>{if(e.key==="Escape"&&PV)closePdf();});
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
