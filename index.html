@@ -106,7 +106,14 @@ h2{font-size:22px}
 .del{display:table;border:1px solid #d9d9df;border-radius:12px;padding:8px 12px;color:var(--mu);font-size:13px;background:#fff;margin-bottom:6px}.del.me{margin-left:auto}
 .cin{display:flex;gap:8px;align-items:center}.cin input:not([hidden]){flex:1;margin:0;border-radius:999px}
 .fchip{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:2px 4px 2px 12px;margin-bottom:6px;font-size:13px}.fchip span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.inchat #tabbar{display:none}body.inchat .cin{bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom))}body.inchat main{padding-bottom:12px}
+body.inchat #tabbar{display:none}body.inchat .cin{bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom))}body.inchat main{padding-bottom:0;display:flex;flex-direction:column;min-height:100dvh}
+body.inchat #ms{flex:1}
+.chead,.cin{background:#f6f6f8}
+.cin{gap:10px;padding:8px 0}
+.cin input:not([hidden]){background:#fff;border:0;box-shadow:0 1px 8px rgba(20,20,40,.08);padding:12px 18px;min-width:0}
+.cin input:not([hidden]):focus{outline:2px solid var(--ac);background:#fff}
+.cin .ib.pl{width:44px;height:44px}
+.intro{background:#e3f2fd;color:#0b6bbd;border-radius:16px;padding:12px 20px;margin:14px auto;max-width:92%;text-align:center;font-size:16px;line-height:1.4}
 input,button{font-size:16px}
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 main{overflow-wrap:anywhere}
@@ -741,12 +748,30 @@ const cid=c=>String(c.chat?.id||c.id);
 function chatRow(c){
   const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
-  const lm=c.chat?.last_message||c.last_message||{},who=lm.user?.meta?.displayname||"";
-  const txt=lm.content==="news.posted"?`${who} hat eine News mit dieser Gruppe geteilt.`:(lm.content||""),un=unreadOf(c);
+  const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
+  const txt=previewOf(lm),un=unreadOf(c);
   const items=[["chat","unread",mk?"Als gelesen markieren":"Ungelesen markieren"],["pin","pin",pin?"Fixierung lösen":"Diesen Chat fixieren"],["folder","arch",ar?"Archivierung aufheben":"Chat archivieren"]];
-  return `<div class="cr2 chat" data-c="${esc(id)}" data-ch="${esc(c.id)}" data-p="${post}" data-n="${esc(n)}">${cav(n,!post)}
+  return `<div class="cr2 chat" ${txt?"":'data-nolm="1" '}data-c="${esc(id)}" data-ch="${esc(c.id)}" data-p="${post}" data-n="${esc(n)}">${cav(n,!post)}
   <div class="cm"><div class="cn${un||mk?" un":""}">${pin?ic("pin")+" ":""}${esc(n)}</div><div class="s">${esc(who||(c.users_count?c.users_count+" Teilnehmer":""))}</div><div class="s2">${esc(txt)}</div></div>
-  <div class="cr"><span>${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:mk?`<i class="bd" style="position:static;min-width:10px;width:10px;height:10px;padding:0"></i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+  <div class="cr"><span class="lt">${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:mk?`<i class="bd" style="position:static;min-width:10px;width:10px;height:10px;padding:0"></i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+}
+const LMC={};
+async function fillLast(){
+  const rows=[...document.querySelectorAll(".chat[data-nolm]")];
+  await Promise.all(rows.map(async el=>{
+    const id=el.dataset.c;
+    try{
+      if(!(id in LMC)){
+        const ms=await api_.msgs(id,1);
+        LMC[id]=ms.filter(x=>!isDel(x)&&previewOf(x)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]||null;
+      }
+      const m=LMC[id];if(!m||!el.isConnected)return;
+      const who=m.user?.meta?.displayname||"";
+      el.querySelector(".s2").textContent=previewOf(m);
+      if(who)el.querySelector(".s").textContent=who;
+      const t=el.querySelector(".lt");if(t)t.textContent=ctime(m.created_at);
+    }catch(_){}
+  }));
 }
 function chatAct(k,id){
   tog({pin:"sdui_pins",unread:"sdui_unread",arch:"sdui_arch"}[k],String(id));chats();
@@ -769,6 +794,7 @@ async function chats(){
       if(LS("sdui_unread").includes(el.dataset.c))tog("sdui_unread",el.dataset.c);
       openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch);
     });
+    fillLast();
   }catch(e){fail(e);}
 }
 /* Neuer Chat (Endpunkt "users" ist geraten, Chat anlegen noch nicht eingebaut) */
@@ -793,12 +819,25 @@ function newsCard(n){
   if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><div class="spin s"></div></div>`;
   return `<div class="shared">${ic("news")} <b>News nicht mehr verfügbar</b><br><span class="mu">Sie wurde gelöscht oder du hast keinen Zugriff.</span></div>`;
 }
-const HINTS={"news.posted":"hat eine News geteilt"};
+const HINTS={"news.posted":"hat eine News geteilt","introductions.conversation":"In dieser Konversation kann sicher kommuniziert werden."};
+const isKey=t=>/^[a-z_]+(\.[a-z_]+)+$/.test(t||"");
+const hintText=k=>HINTS[k]||"Systemnachricht";
+const isDel=x=>!!(x&&(x.deleted_at||x.unset_at));
+function previewOf(x){
+  if(!x)return"";
+  const who=x.user?.meta?.displayname||"";
+  if(x.content==="news.posted"||x.target_type==="news")return(who?who+" ":"")+"hat eine News geteilt";
+  if(isKey(x.content))return hintText(x.content);
+  if(x.content)return x.content;
+  if(x.file)return"📎 "+(x.file.name||"Datei");
+  return"";
+}
 function msgHtml(x,mine){
   if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
+  if(x.content==="introductions.conversation")return `<div class="intro">${esc(HINTS[x.content])}</div>`;
   let b="";
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
-  else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
+  else if(x.type==="HINT"||isKey(x.content))b=`<i>${esc(hintText(x.content))}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
   if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:fileHtml(f.name,f.extension,f.size??m.size,m.download_uri||m.uri);
