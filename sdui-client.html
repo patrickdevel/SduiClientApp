@@ -170,6 +170,10 @@ nav a:hover:not(.on){background:#f3f3f6}
 .ib.gr.act{color:var(--ac)}.ib.gr.act .ic{fill:var(--ac)}
 .warn{background:#fdebe3;color:#b4441b;border-radius:10px;padding:14px;font-size:13px;margin:16px 0}
 .av3{width:36px;height:36px;border-radius:50%;background:#dcf0fa;color:#1d6f99;display:flex;align-items:center;justify-content:center;flex:none}.av3 .ic{width:18px;height:18px}
+.spin{width:38px;height:38px;border:4px solid #fbdce7;border-top-color:var(--ac);border-radius:50%;animation:sp .8s linear infinite;margin:90px auto}
+.spin.s{width:26px;height:26px;border-width:3px;margin:18px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
 </style>
 </head>
 <body>
@@ -248,16 +252,19 @@ async function authSrc(u){
   if(url.hostname!=="api.sdui.app")return url.href;
   const r=await fetch(PROXY?PROXY+encodeURIComponent(url.href):url.href,{headers:{Authorization:"Bearer "+token}});
   if(!r.ok)throw new Error("HTTP "+r.status);
-  return URL.createObjectURL(await r.blob());
+  const bl=await r.blob();if(/json/.test(bl.type))throw new Error("Keine Datei");return URL.createObjectURL(bl);
 }
 function dlFile(u,name){
   authSrc(u).then(h=>{const a=document.createElement("a");a.href=h;a.download=name||"";a.target="_blank";document.body.appendChild(a);a.click();a.remove();}).catch(e=>alert("Download fehlgeschlagen: "+e.message));
 }
 function hydrate(){
   document.querySelectorAll("img[data-src]:not([data-h])").forEach(async i=>{
-    i.dataset.h=1;
-    try{i.src=await authSrc(i.dataset.src);i.style.cursor="zoom-in";i.onclick=()=>window.open(i.src,"_blank");}
-    catch(_){i.replaceWith(Object.assign(document.createElement("span"),{className:"mu",textContent:"Bild konnte nicht geladen werden"}));}
+    i.dataset.h=1;let ok=false;
+    for(const u of [i.dataset.src,i.dataset.alt]){
+      if(!u)continue;
+      try{i.src=await authSrc(u);i.style.cursor="zoom-in";i.onclick=()=>window.open(i.src,"_blank");ok=true;break;}catch(_){}
+    }
+    if(!ok)i.replaceWith(Object.assign(document.createElement("span"),{className:"mu",textContent:"Bild konnte nicht geladen werden"}));
   });
 }
 document.addEventListener("click",e=>{const a=e.target.closest("a[data-dl]");if(a){e.preventDefault();dlFile(a.dataset.dl,a.dataset.name);}});
@@ -330,7 +337,7 @@ $("#go").onclick=async()=>{
   }catch(e){$("#lerr").textContent=e.message==="Failed to fetch"?"Netzwerk/CORS-Fehler. Datei lokal öffnen oder CORS-Proxy nutzen.":e.message;}
 };
 const V=h=>$("#view").innerHTML=h;
-const load=()=>{document.body.classList.remove("inchat");V('<p class="mu">Lade …</p>');};
+const load=()=>{document.body.classList.remove("inchat");V('<div class="spin" role="status" aria-label="Lädt"></div>');};
 const fail=e=>V(`<div class="card err">${esc(e.message)}</div>`);
 
 /* NEWS */
@@ -352,9 +359,11 @@ async function news(){
     NEWS=await api_.news(npage);
     const mi=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
     V(`<div class="ph sticky"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
-      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`+
+      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
+      <label class="sbox">${ic("search")}<input id="ns" placeholder="News suchen" autocomplete="off"></label>`+
       NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")+(NEWS.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
+    $("#ns").oninput=e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
     $("#np").onclick=()=>{npage--;news();scrollTo(0,0);};$("#nn").onclick=()=>{npage++;news();scrollTo(0,0);};
     api_.activity().then(a=>{if(a.notification?.unread_count){const b=$("#bellb");if(b)b.hidden=false;}}).catch(()=>{});
   }catch(e){fail(e);}
@@ -374,7 +383,7 @@ document.addEventListener("click",e=>{
   const cm=e.target.closest("[data-cm]");
   if(cm){cm.closest(".menu").hidden=true;chatAct(cm.dataset.cm,cm.closest(".chat").dataset.c);return;}
   const cf=e.target.closest("[data-cf]");
-  if(cf){cf.closest(".menu").hidden=true;if(cf.dataset.cf==="unread"){sessionStorage.setItem("cfu",sessionStorage.getItem("cfu")?"":"1");chats();}else alert("Diese Ansicht ist noch nicht eingebaut.");return;}
+  if(cf){cf.closest(".menu").hidden=true;const t={unread:"cfu",arch:"carch"}[cf.dataset.cf];if(t){sessionStorage.getItem(t)?sessionStorage.removeItem(t):sessionStorage.setItem(t,"1");chats();}else alert("Diese Ansicht ist noch nicht eingebaut.");return;}
   const b=e.target.closest("#view [data-act]");if(!b)return;e.preventDefault();
   const k=b.dataset.act,n=NEWS[+b.closest(".ncard")?.dataset.ni];
   if(k==="menu"||k==="more"){const mm=b.parentNode.querySelector(".menu");mm.hidden=!mm.hidden;}
@@ -436,7 +445,7 @@ async function trNews(n,lang){
 function trModal(n){
   let lang=localStorage.getItem("sdui_lang")||"en",tab="tr";
   const show=async()=>{
-    const box=$("#trb");box.innerHTML='<p class="mu" style="text-align:center">Übersetze …</p>';
+    const box=$("#trb");box.innerHTML='<div class="spin s"></div>';
     try{
       if(tab==="tr"){const t=await trNews(n,lang);box.dir=["ar","fa"].includes(lang)?"rtl":"ltr";box.innerHTML=newsItem(n,0,{title:t.title,html:t.html});}
       else{box.dir="ltr";box.innerHTML=newsItem(n,0);}
@@ -553,7 +562,7 @@ async function openSheet(l){
     srow("room","Raum",rn(l))+srow("group","Klasse(n)",esc((l.grades||[]).map(g=>g.shortcut||g.name).join(", ")))+
     (o?srow("cal","Eigentlich geplant",`${esc(lname(o))}<br><span class="mu">${tn(o)} ${rn(o)?"· "+rn(o):""}</span>`):"")+
     srow("info","Hinweis",esc([l.comment,l.meta?.moved_comment].filter(Boolean).join(" · ")))+
-    `<div id="cb" class="mu">Lade Klassenbuch …</div>`;
+    `<div id="cb"><div class="spin s"></div></div>`;
   $("#sheet").classList.add("open");
   try{
     const e=await api_.classbook(l.id,iso(d));
@@ -588,32 +597,40 @@ function cav(n,locked){
   const m=String(n).match(/^\d{2}\/\d{2}\s+([A-Za-zÄÖÜäöü]{2})/);
   return `<div class="av2${m?"":" grp"}">${m?m[1].toUpperCase():ic("group")}<span class="bdg2 ${locked?"k":"g"}">${ic(locked?"lock":"chat")}</span></div>`;
 }
-function chatRow(c,pinned){
-  const n=c.meta?.displayname||c.code,id=c.chat?.id||c.id,post=c.chat?.can?.["post-message"]===0?0:1;
+const LS=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch(_){return[];}};
+const tog=(k,id)=>{const a=LS(k),i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);localStorage.setItem(k,JSON.stringify(a));};
+const cid=c=>String(c.chat?.id||c.id);
+function chatRow(c){
+  const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
+  const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const lm=c.chat?.last_message||c.last_message||{},who=lm.user?.meta?.displayname||"";
   const txt=lm.content==="news.posted"?`${who} hat eine News mit dieser Gruppe geteilt.`:(lm.content||""),un=unreadOf(c);
-  const items=[["chat","unread","Ungelesen markieren"],["pin","pin",pinned?"Fixierung lösen":"Diesen Chat fixieren"],["bellx","mute","Benachrichtigungen deaktivieren"],["folder","arch","Chat archivieren"]];
+  const items=[["chat","unread",mk?"Als gelesen markieren":"Ungelesen markieren"],["pin","pin",pin?"Fixierung lösen":"Diesen Chat fixieren"],["folder","arch",ar?"Archivierung aufheben":"Chat archivieren"]];
   return `<div class="cr2 chat" data-c="${esc(id)}" data-ch="${esc(c.id)}" data-p="${post}" data-n="${esc(n)}">${cav(n,!post)}
-  <div class="cm"><div class="cn${un?" un":""}">${pinned?ic("pin")+" ":""}${esc(n)}</div><div class="s">${esc(who||(c.users_count?c.users_count+" Teilnehmer":""))}</div><div class="s2">${esc(txt)}</div></div>
-  <div class="cr"><span>${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+  <div class="cm"><div class="cn${un||mk?" un":""}">${pin?ic("pin")+" ":""}${esc(n)}</div><div class="s">${esc(who||(c.users_count?c.users_count+" Teilnehmer":""))}</div><div class="s2">${esc(txt)}</div></div>
+  <div class="cr"><span>${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:mk?`<i class="bd" style="position:static;min-width:10px;width:10px;height:10px;padding:0"></i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
 }
 function chatAct(k,id){
-  if(k==="pin"){const p=JSON.parse(localStorage.getItem("sdui_pins")||"[]"),i=p.indexOf(String(id));i<0?p.push(String(id)):p.splice(i,1);localStorage.setItem("sdui_pins",JSON.stringify(p));chats();}
-  else alert("Diese Aktion ist noch nicht eingebaut.");
+  tog({pin:"sdui_pins",unread:"sdui_unread",arch:"sdui_arch"}[k],String(id));chats();
 }
 async function chats(){
   load();
-  const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),pins=JSON.parse(localStorage.getItem("sdui_pins")||"[]");
+  const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),car=!!sessionStorage.getItem("carch"),pins=LS("sdui_pins"),ar=LS("sdui_arch"),mk=LS("sdui_unread");
   try{
-    let l=await api_.chats(1,q);
-    if(cfu)l=l.filter(c=>unreadOf(c)>0);
-    l=l.map(c=>[c,pins.includes(String(c.chat?.id||c.id))]).sort((a,b)=>b[1]-a[1]);
-    const fl=[["chat","unread",cfu?"Alle Chats anzeigen":"Nach Ungelesen filtern"],["archive","arch","Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
+    let l=(await api_.chats(1,q)).filter(c=>ar.includes(cid(c))===car);
+    if(cfu)l=l.filter(c=>unreadOf(c)>0||mk.includes(cid(c)));
+    l=l.map(c=>[c,pins.includes(cid(c))]).sort((a,b)=>b[1]-a[1]);
+    const fl=[["chat","unread",cfu?"Alle Chats anzeigen":"Nach Ungelesen filtern"],["archive","arch",car?"Archiv verlassen":"Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
     V(hdr("Chats",`<button class="ib pl" data-act="newchat" aria-label="Neuer Chat">${ic("plus")}</button>`,"cinfo")+
-      `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
-      (l.length?`<div class="clist">${l.map(([c,p])=>chatRow(c,p)).join("")}</div>`:'<p class="mu">Keine Chats.</p>'));
+      `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu||car?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
+      (car?'<h3 style="margin:0 0 10px">Archivierte Gruppen</h3>':"")+
+      (l.length?`<div class="clist">${l.map(([c])=>chatRow(c)).join("")}</div>`:`<p class="mu">${car?"Keine archivierten Chats.":"Keine Chats."}</p>`));
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
-    document.querySelectorAll(".chat").forEach(el=>el.onclick=e=>{if(e.target.closest(".mw"))return;openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch);});
+    document.querySelectorAll(".chat").forEach(el=>el.onclick=e=>{
+      if(e.target.closest(".mw"))return;
+      if(LS("sdui_unread").includes(el.dataset.c))tog("sdui_unread",el.dataset.c);
+      openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch);
+    });
   }catch(e){fail(e);}
 }
 /* Neuer Chat (Endpunkt "users" ist geraten, Chat anlegen noch nicht eingebaut) */
@@ -623,7 +640,7 @@ async function newChat(){
     <label class="sbox" style="margin:0 0 18px">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label><div id="ul"></div>`);
   $("#nb").onclick=()=>go("chats");
   const fill=async q=>{
-    $("#ul").innerHTML='<p class="mu">Lade …</p>';
+    $("#ul").innerHTML='<div class="spin s"></div>';
     try{
       const r=await api("users",{params:{search:q,page:1}}),u=Array.isArray(r)?r:[];
       $("#ul").innerHTML=u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(x.id)}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(x.meta?.displayname||(x.firstname+" "+x.lastname).trim())}</div><div class="s2">${esc(x.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:'<p class="mu">Keine Treffer.</p>';
@@ -635,7 +652,7 @@ async function newChat(){
 }
 function newsCard(n){
   if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
-  if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><span class="mu">Lade News …</span></div>`;
+  if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><div class="spin s"></div></div>`;
   return `<div class="shared">${ic("news")} <b>News nicht mehr verfügbar</b><br><span class="mu">Sie wurde gelöscht oder du hast keinen Zugriff.</span></div>`;
 }
 const HINTS={"news.posted":"hat eine News geteilt"};
@@ -646,7 +663,7 @@ function msgHtml(x,mine){
   else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
-  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" alt="${esc(f.name)}">`:`<div><a href="#" data-dl="${esc(m.download_uri||m.uri)}" data-name="${esc(f.name)}">${ic("clip")} ${esc(f.name)}</a></div>`;
+  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:`<div><a href="#" data-dl="${esc(m.download_uri||m.uri)}" data-name="${esc(f.name)}">${ic("clip")} ${esc(f.name)}</a></div>`;
   const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
   return `<div class="msg ${mine?"me":""}">${mine?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`}${b}<div class="tm">${t}</div></div>`;
 }
@@ -692,7 +709,7 @@ function drawChat(scroll){
   if(scroll)window.scrollTo(0,document.body.scrollHeight);
 }
 async function chatInfo(){
-  $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><p class="mu">Lade Teilnehmer …</p>`;$("#sheet").classList.add("open");
+  $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="spin s"></div>`;$("#sheet").classList.add("open");
   try{
     const r=await api_.members(CH.ch);
     $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="mu">${r.length} Teilnehmer (erste Seite)</div>`+r.map(u=>{const n=u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||""} ${u.lastname||""}`.trim()||"Unbekannt";return `<div class="srow" style="align-items:center"><div class="av" style="width:34px;height:34px;font-size:13px">${ini(n)}</div><div>${esc(n)}<div class="mu">${esc(u.meta?.subtitle||u.type||"")}</div></div></div>`;}).join("");
