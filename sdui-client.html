@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sdui Web</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--tx:#1c2230;--mu:#6b7488;--ac:#3b6cf6;--bd:#e3e7f0;--rd:#e5484d}
+@media(prefers-color-scheme:dark){:root{--bg:#10131b;--card:#181c27;--tx:#e8ebf3;--mu:#98a1b5;--bd:#262c3b}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+button,input{font:inherit}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px}
+input{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);margin:6px 0 12px}
+.btn{background:var(--ac);color:#fff;border:0;padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ac);border:1px solid var(--bd)}
+#login{max-width:380px;margin:10vh auto;padding:0 16px}
+#app{display:none;min-height:100vh}
+nav{position:fixed;left:0;top:0;bottom:0;width:200px;background:var(--card);border-right:1px solid var(--bd);padding:16px 10px}
+nav h2{margin:4px 10px 14px;font-size:18px}
+nav a{display:block;padding:10px 12px;border-radius:10px;color:var(--tx);cursor:pointer;margin-bottom:2px}
+nav a.on{background:var(--ac);color:#fff}
+main{margin-left:200px;padding:20px;max-width:900px}
+.mu{color:var(--mu);font-size:13px}.err{color:var(--rd)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tt{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.tt .day{min-width:0}.tt h4{margin:0 0 6px;font-size:13px}
+.les{border-left:4px solid var(--ac);background:var(--bg);border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:13px}
+.les.CANCLED{opacity:.55;text-decoration:line-through;border-color:var(--rd)}
+.les.SUBSTITUTION{border-color:#f5a524}
+.chat{cursor:pointer}.msg{padding:8px 12px;border-radius:12px;background:var(--bg);margin-bottom:6px;max-width:80%}
+.msg.me{margin-left:auto;background:var(--ac);color:#fff}
+.news-body img{max-width:100%}
+@media(max-width:700px){nav{position:static;width:auto;display:flex;overflow:auto;border:0;padding:8px}nav h2{display:none}main{margin:0;padding:12px}.tt{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login"><div class="card">
+<h2 style="margin-top:0">Sdui Web</h2>
+<p class="mu">Inoffizieller Client. Nicht mit Sdui GmbH verbunden.</p>
+<label>Schule suchen<input id="sq" placeholder="z. B. Franziskus Koblenz" autocomplete="off"></label>
+<div id="sres"></div>
+<label>Schul-Link (slink)<input id="slink" placeholder="wird bei Auswahl automatisch gesetzt"></label>
+<label>Benutzername / E-Mail<input id="ident" autocomplete="username"></label>
+<label>Passwort<input id="pw" type="password" autocomplete="current-password"></label>
+<button class="btn" id="go">Anmelden</button>
+<p id="lerr" class="err"></p>
+<p class="mu">Tipp: Zugangsdaten bleiben nur in deinem Browser (Token in localStorage).</p>
+</div></div>
+
+<div id="app">
+<nav id="nav"><h2>Sdui Web</h2></nav>
+<main id="view"></main>
+</div>
+
+<script>
+const BASE="https://api.sdui.app/v1/";
+let token=localStorage.getItem("sdui_token")||"";
+let me=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function api(path,{method="GET",params,body}={}){
+  const u=new URL(path,BASE);
+  if(params)Object.entries(params).forEach(([k,v])=>v!=null&&v!==""&&u.searchParams.set(k,v));
+  const r=await fetch(u,{method,headers:{"Accept":"application/json","Content-Type":"application/json",...(token&&{Authorization:"Bearer "+token})},body:body?JSON.stringify(body):undefined});
+  if(r.status===401){logout();throw new Error("Sitzung abgelaufen");}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||"Fehler "+r.status);
+  return j.data;
+}
+const api_ = {
+  login:(slink,identifier,password)=>api("auth/login",{method:"POST",body:{slink,identifier,password,showErrors:true}}),
+  user:()=>api("users/self"),
+  news:page=>api("users/self/feed/news",{params:{page}}),
+  times:()=>api("timetables/times"),
+  timetable:(a,b)=>api("timetables/users/self/timetable",{params:{begins_at:a,ends_at:b}}),
+  chats:(page,search)=>api("users/self/channels/chats",{params:{page,search,limit:15}}),
+  msgs:(id,page)=>api(`channels/chats/${id}/messages`,{params:{page}}),
+  send:(id,content)=>api(`channels/chats/${id}/messages`,{method:"POST",body:{content}}),
+  courses:()=>api("users/self/timetable/courses"),
+  activity:()=>api("users/self/activity-summary"),
+  vote:(id,vote)=>api(`channels/surveys/${id}/vote`,{method:"PUT",body:vote})
+};
+
+const pages={news:"News",timetable:"Stundenplan",chats:"Chats",courses:"Kurse",profile:"Profil"};
+function buildNav(){
+  $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${v}</a>`).join("")+'<a id="out">Abmelden</a>';
+  $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();location.hash=a.dataset.p;};
+}
+function route(){
+  const p=(location.hash.slice(1)||"news").split("-")[0];
+  document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
+  ({news,timetable,chats,courses,profile}[p]||news)();
+}
+window.addEventListener("hashchange",()=>token&&route());
+
+function logout(){token="";localStorage.removeItem("sdui_token");$("#app").style.display="none";$("#login").style.display="block";}
+async function start(){
+  $("#login").style.display="none";$("#app").style.display="block";buildNav();
+  try{me=await api_.user();}catch(e){return logout();}
+  route();
+}
+$("#go").onclick=async()=>{
+  $("#lerr").textContent="";
+  try{
+    const d=await api_.login($("#slink").value.trim(),$("#ident").value.trim(),$("#pw").value);
+    token=d.access_token;localStorage.setItem("sdui_token",token);$("#pw").value="";start();
+  }catch(e){$("#lerr").textContent=e.message==="Failed to fetch"?"Netzwerk/CORS-Fehler. Datei lokal öffnen oder CORS-Proxy nutzen.":e.message;}
+};
+const V=h=>$("#view").innerHTML=h;
+const load=()=>V('<p class="mu">Lade …</p>');
+const fail=e=>V(`<div class="card err">${esc(e.message)}</div>`);
+
+/* NEWS */
+let npage=1;
+async function news(){
+  load();
+  try{
+    const items=await api_.news(npage);
+    V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · 📌":""}</div>
+      <h3 style="margin:6px 0">${esc(n.title)}</h3>
+      <div class="news-body">${n.content_rendered||esc(n.content)}</div>
+      ${(n.attachments||[]).map(a=>`<div><a href="${esc(a.meta?.download_uri||a.meta?.uri)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></div>`).join("")}
+      ${n.survey?surveyHtml(n.survey):""}</div>`).join("")||'<p class="mu">Keine News.</p>'+
+      `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">← Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter →</button></div>`);
+    $("#np").onclick=()=>{npage--;news();};$("#nn").onclick=()=>{npage++;news();};
+  }catch(e){fail(e);}
+}
+function surveyHtml(s){
+  const o=s.meta?.options||[];
+  return `<div style="margin-top:10px"><b>📊 ${esc(s.question)}</b>`+o.map(x=>`<div><button class="btn ghost" style="margin-top:6px" ${s.meta.is_over?"disabled":""} data-sv="${s.uuid}" data-o="${x.uuid}">${x.is_chosen?"✅ ":""}${esc(x.name)}</button></div>`).join("")+`</div>`;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-sv]");if(!b)return;
+  try{await api_.vote(b.dataset.sv,{options:[b.dataset.o]});news();}catch(x){alert(x.message);}
+});
+
+/* TIMETABLE */
+let weekOff=0;
+const iso=d=>d.toISOString().slice(0,10);
+async function timetable(){
+  load();
+  const now=new Date();const day=(now.getDay()+6)%7;
+  const mon=new Date(now);mon.setDate(now.getDate()-day+weekOff*7);
+  const fri=new Date(mon);fri.setDate(mon.getDate()+4);
+  try{
+    const t=await api_.timetable(iso(mon),iso(fri));
+    const names=["Mo","Di","Mi","Do","Fr"];
+    const cols=names.map((n,i)=>{
+      const d=new Date(mon);d.setDate(mon.getDate()+i);
+      const ls=(t.lessons||[]).filter(l=>new Date(l.begins_at*1000).toDateString()===d.toDateString()).sort((a,b)=>a.begins_at-b.begins_at);
+      return `<div class="day"><h4>${n} ${d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</h4>`+(ls.map(l=>{
+        const col=l.course?.subject?.color||l.course?.meta?.color||"";
+        const tm=new Date(l.begins_at*1000).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+        return `<div class="les ${esc(l.kind||"")}" style="${/^#?[0-9a-f]{3,8}$/i.test(col)?`border-color:${col[0]==="#"?col:"#"+col}`:""}"><b>${esc(l.meta?.displayname||l.course?.meta?.displayname||l.course?.name||"Stunde")}</b><br><span class="mu">${tm} · ${esc((l.teachers||[]).map(x=>x.shortcut).join(", "))} ${esc((l.bookables||[]).map(x=>x.shortcut).join(", "))}</span>${l.comment?`<br><span class="mu">${esc(l.comment)}</span>`:""}</div>`;
+      }).join("")||'<span class="mu">–</span>')+`</div>`;
+    }).join("");
+    V(`<div class="row" style="justify-content:space-between"><h2>Stundenplan</h2><div class="row"><button class="btn ghost" id="pw_">←</button><button class="btn ghost" id="cw">Heute</button><button class="btn ghost" id="nw">→</button></div></div><div class="tt">${cols}</div><p class="mu">Stand: ${esc(t.last_updated_at||"")}</p>`);
+    $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};$("#cw").onclick=()=>{weekOff=0;timetable();};
+  }catch(e){fail(e);}
+}
+
+/* CHATS */
+async function chats(){
+  load();
+  const q=sessionStorage.getItem("cq")||"";
+  try{
+    const list=await api_.chats(1,q);
+    V(`<h2>Chats</h2><input id="cs" placeholder="Suchen …" value="${esc(q)}">`+
+      list.map(c=>`<div class="card chat" data-c="${c.chat?.id||c.id}"><b>${esc(c.meta?.displayname||c.code)}</b> <span class="mu">${c.users_count||""} Teilnehmer</span><br><span class="mu">${esc(c.meta?.subtitle||"")}</span></div>`).join("")||'<p class="mu">Keine Chats.</p>');
+    $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
+    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c));
+  }catch(e){fail(e);}
+}
+async function openChat(id){
+  load();
+  try{
+    const m=(await api_.msgs(id,1)).slice().reverse();
+    V(`<button class="btn ghost" id="bk">← Chats</button><h2>Chat</h2><div id="ms">`+m.map(x=>{
+      const mine=x.user?.id===me.id;
+      return `<div class="msg ${mine?"me":""}"><div class="mu" style="${mine?"color:#dfe7ff":""}">${esc(x.user?.meta?.displayname||"")} · ${new Date(x.created_at).toLocaleString("de-DE")}</div>${esc(x.content||x.content_rendered||"")}</div>`;
+    }).join("")+`</div><div class="row"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">Senden</button></div>`);
+    $("#bk").onclick=chats;
+    const send=async()=>{const v=$("#mi").value.trim();if(!v)return;try{await api_.send(id,v);openChat(id);}catch(e){alert(e.message);}};
+    $("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();
+  }catch(e){fail(e);}
+}
+
+/* COURSES */
+async function courses(){
+  load();
+  try{
+    const c=await api_.courses();
+    V(`<h2>Kurse</h2>`+c.map(x=>`<div class="card"><b>${esc(x.meta?.displayname||x.name)}</b><br><span class="mu">${esc(x.description||"")}</span></div>`).join(""));
+  }catch(e){fail(e);}
+}
+
+/* PROFILE */
+async function profile(){
+  load();
+  try{
+    const [u,a]=await Promise.all([api_.user(),api_.activity().catch(()=>null)]);
+    V(`<h2>Profil</h2><div class="card"><h3 style="margin-top:0">${esc(u.meta?.displayname||u.firstname+" "+u.lastname)}</h3>
+      <p class="mu">${esc(u.meta?.subtitle||"")}</p>
+      <p>Schule: ${esc(u.school?.name)}<br>Klasse: ${esc(u.grade?.name||"–")}<br>Rolle: ${esc(u.primary_role?.name||u.type)}<br>E-Mail: ${esc(u.email||"–")}</p></div>
+      ${a?`<div class="card"><b>Aktivität</b><pre class="mu" style="white-space:pre-wrap">${esc(JSON.stringify(a,null,2))}</pre></div>`:""}`);
+  }catch(e){fail(e);}
+}
+
+/* SCHULSUCHE */
+let st;
+$("#sq").oninput=e=>{
+  clearTimeout(st);const q=e.target.value.trim();
+  if(q.length<3){$("#sres").innerHTML="";return;}
+  $("#sres").innerHTML='<p class="mu">Suche …</p>';
+  st=setTimeout(async()=>{
+    try{
+      const r=await api("leads",{params:{search:q}});
+      $("#sres").innerHTML=(r.length?r.slice(0,8).map(s=>`<div class="card" style="cursor:pointer;padding:10px;margin-bottom:6px" data-sl="${esc(s.slink)}" data-n="${esc(s.name)}"><b>${esc(s.name)}</b><br><span class="mu">${esc(s.city||"")} ${esc(s.street||"")}</span></div>`).join(""):'<p class="mu">Keine Treffer.</p>');
+    }catch(x){$("#sres").innerHTML=`<p class="err">${esc(x.message==="Failed to fetch"?"Netzwerk/CORS-Fehler. Datei lokal öffnen oder CORS-Proxy nutzen.":x.message)}</p>`;}
+  },350);
+};
+$("#sres").onclick=e=>{
+  const c=e.target.closest("[data-sl]");if(!c)return;
+  $("#slink").value=c.dataset.sl;$("#sq").value=c.dataset.n;
+  $("#sres").innerHTML=`<p class="mu">✅ Ausgewählt: ${esc(c.dataset.n)} (${esc(c.dataset.sl)})</p>`;
+};
+
+if(token)start();
+</script>
+</body>
+</html>
