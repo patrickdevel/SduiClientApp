@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sdui Web</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
 <style>
-:root{--bg:#f4f6fb;--card:#fff;--tx:#1c2230;--mu:#6b7488;--ac:#3b6cf6;--bd:#e3e7f0;--rd:#e5484d}
-@media(prefers-color-scheme:dark){:root{--bg:#10131b;--card:#181c27;--tx:#e8ebf3;--mu:#98a1b5;--bd:#262c3b}}
+:root{--bg:#f4f4f6;--card:#fff;--tx:#1a1a1f;--mu:#6e6e78;--ac:#2f6bff;--bd:#ebebef;--rd:#e5484d}
 *{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
 button,input{font:inherit}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px}
@@ -31,6 +31,19 @@ main{margin-left:200px;padding:20px;max-width:900px}
 .msg.me{margin-left:auto;background:var(--ac);color:#fff}
 .news-body img{max-width:100%}
 @media(max-width:700px){nav{position:static;width:auto;display:flex;overflow:auto;border:0;padding:8px}nav h2{display:none}main{margin:0;padding:12px}.tt{grid-template-columns:1fr}}
+body{font-family:'Poppins','Sofia Pro',system-ui,sans-serif}
+.card{border:0;border-radius:20px;box-shadow:0 2px 12px rgba(20,20,40,.06);padding:18px 20px}
+input{background:#f0f0f2;border:1px solid transparent;border-radius:14px;padding:12px 14px}
+input:focus{outline:2px solid var(--ac);background:#fff}
+.btn{border-radius:14px;font-weight:600}
+nav{border-right:0;box-shadow:2px 0 14px rgba(20,20,40,.05)}
+nav a{border-radius:14px;font-weight:500}
+nav a.on{background:#eaf0ff;color:var(--ac);font-weight:600}
+h2{font-size:26px;margin:4px 0 14px}
+.les{background:#f6f6f8}.msg{background:#fff;box-shadow:0 1px 6px rgba(20,20,40,.06)}
+.nimg{max-width:100%;max-height:420px;border-radius:14px;display:block;margin:8px 0}
+.shared{border-left:4px solid var(--ac);background:#f4f7ff;border-radius:10px;padding:8px 10px;margin-top:4px}
+.msg.me .shared{background:rgba(255,255,255,.18);color:#fff;border-color:#fff}
 </style>
 </head>
 <body>
@@ -122,11 +135,19 @@ async function news(){
     V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · 📌":""}</div>
       <h3 style="margin:6px 0">${esc(n.title)}</h3>
       <div class="news-body">${n.content_rendered||esc(n.content)}</div>
-      ${(n.attachments||[]).map(a=>`<div><a href="${esc(a.meta?.download_uri||a.meta?.uri)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></div>`).join("")}
+      ${attHtml(n.attachments)}
       ${n.survey?surveyHtml(n.survey):""}</div>`).join("")+(items.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">← Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter →</button></div>`);
     $("#np").onclick=()=>{npage--;news();};$("#nn").onclick=()=>{npage++;news();};
   }catch(e){fail(e);}
+}
+function attHtml(list){
+  return (list||[]).map(a=>{
+    const u=a.meta?.temp_uri||a.meta?.uri||a.meta?.download_uri,d=a.meta?.download_uri||u;
+    if(/^(jpe?g|png|gif|webp|bmp)$/i.test(a.extension||"")||a.file_type==="image")
+      return `<a href="${esc(d)}" target="_blank" rel="noopener"><img class="nimg" loading="lazy" src="${esc(u)}" alt="${esc(a.name)}"></a>`;
+    return `<div><a href="${esc(d)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></div>`;
+  }).join("");
 }
 function surveyHtml(s){
   const o=s.meta?.options||[];
@@ -169,22 +190,32 @@ async function chats(){
   try{
     const list=await api_.chats(1,q);
     V(`<h2>Chats</h2><input id="cs" placeholder="Suchen …" value="${esc(q)}">`+
-      list.map(c=>`<div class="card chat" data-c="${c.chat?.id||c.id}"><b>${esc(c.meta?.displayname||c.code)}</b> <span class="mu">${c.users_count||""} Teilnehmer</span><br><span class="mu">${esc(c.meta?.subtitle||"")}</span></div>`).join("")||'<p class="mu">Keine Chats.</p>');
+      list.map(c=>`<div class="card chat" data-c="${c.chat?.id||c.id}" data-p="${c.chat?.can?.["post-message"]===0?0:1}" data-n="${esc(c.meta?.displayname||c.code)}"><b>${esc(c.meta?.displayname||c.code)}</b> <span class="mu">${c.users_count||""} Teilnehmer</span><br><span class="mu">${esc(c.meta?.subtitle||"")}</span></div>`).join("")||'<p class="mu">Keine Chats.</p>');
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
-    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c));
+    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c,el.dataset.p==='1',el.dataset.n));
   }catch(e){fail(e);}
 }
-async function openChat(id){
+const HINTS={"news.posted":"hat eine News geteilt"};
+function msgHtml(x,mine){
+  const who=esc(x.user?.meta?.displayname||""),t=new Date(x.created_at).toLocaleString("de-DE");
+  let b="";
+  if(x.target_type==="news"||x.content==="news.posted")b=`<div class="shared">📰 <b>News geteilt</b><br>${esc(x.target?.title||"")}</div>`;
+  else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
+  else b=esc(x.content||"");
+  const f=x.file,m=f?.meta||{};
+  if(f)b+=m.has_image?`<img class="nimg" loading="lazy" src="${esc(m.content_uri||m.thumbnail_uri||m.uri)}">`:`<div><a href="${esc(m.download_uri||m.uri)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a></div>`;
+  return `<div class="msg ${mine?"me":""}"><div class="mu" style="${mine?"color:#dfe7ff":""}">${who} · ${t}</div>${b}</div>`;
+}
+async function openChat(id,canPost=true,name="Chat"){
   load();
   try{
     const m=(await api_.msgs(id,1)).slice().reverse();
-    V(`<button class="btn ghost" id="bk">← Chats</button><h2>Chat</h2><div id="ms">`+m.map(x=>{
-      const mine=x.user?.id===me.id;
-      return `<div class="msg ${mine?"me":""}"><div class="mu" style="${mine?"color:#dfe7ff":""}">${esc(x.user?.meta?.displayname||"")} · ${new Date(x.created_at).toLocaleString("de-DE")}</div>${esc(x.content||x.content_rendered||"")}</div>`;
-    }).join("")+`</div><div class="row"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">Senden</button></div>`);
+    V(`<button class="btn ghost" id="bk">← Chats</button><h2>${esc(name)}</h2><div id="ms">`+m.map(x=>{
+      return msgHtml(x,x.user?.id===me.id);
+    }).join("")+`</div>`+(canPost?`<div class="row"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">Senden</button></div>`:`<div class="card mu">🔒 Einweg-Chat: Hier können nur Admins schreiben.</div>`));
     $("#bk").onclick=chats;
-    const send=async()=>{const v=$("#mi").value.trim();if(!v)return;try{await api_.send(id,v);openChat(id);}catch(e){alert(e.message);}};
-    $("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();
+    const send=async()=>{const v=$("#mi").value.trim();if(!v)return;try{await api_.send(id,v);openChat(id,canPost,name);}catch(e){alert(e.message);}};
+    if(canPost){$("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();}
   }catch(e){fail(e);}
 }
 
