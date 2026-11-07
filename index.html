@@ -1041,16 +1041,16 @@ async function contactsAll(){
   return NCU=[...m.values()].sort((x,y)=>uName(x).localeCompare(uName(y),"de"));
 }
 async function startChat(id,name){
-  const tries=[["channels/chats",{users:[id]}],["users/self/channels/chats",{users:[id]}],["channels/chats",{user_id:id}]];
-  let err=null;
-  for(const [path,body] of tries){
+  const tries=[["POST","channels/chats",{users:[id]}],["POST","users/self/channels/chats",{users:[id]}],["POST","channels/chats",{user_id:id}],["PUT","channels/chats",{users:[id]}]];
+  const log=[];
+  for(const [method,path,body] of tries){
     try{
-      const r=await api(path,{method:"POST",body}),cid_=r?.id||r?.chat?.id;
+      const r=await api(path,{method,body}),cid_=r?.id||r?.chat?.id;
       if(cid_){openChat(String(r.chat?.id||cid_),true,name,String(r.id||cid_));return;}
       go("chats");return;
-    }catch(e){err=e;}
+    }catch(e){log.push(method+" "+path+" → "+e.message);}
   }
-  alert("Chat konnte nicht erstellt werden: "+(err?.message||"Unbekannter Fehler"));
+  alert("Chat konnte nicht erstellt werden.\n\n"+log.join("\n"));
 }
 async function newChat(){
   V(`<div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
