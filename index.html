@@ -628,7 +628,29 @@ let weekOff=0,selDay=null,ttView="day",ttL=[];
 const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const KIND={SUBSTITUTION:["Vertretung","#f59e0b"],CANCLED:["Entfall","#e5484d"],EVENT:["Event","#2f6bff"],BOOKABLE_CHANGE:["Raumänderung","#0ea5a4"],HOLIDAY:["Ferien","#8b5cf6"]};
 const fmtT=t=>new Date(t*1000).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-const lcol=l=>{let c=(l.course?.subject?.color||l.course?.meta?.color||"").replace("#","");if(c.length===3)c=[...c].map(x=>x+x).join("");return /^[0-9a-f]{6}/i.test(c)?"#"+c.slice(0,6):"#2f6bff"};
+const SUBJ_PAL=["#2f6bff","#e5322d","#f5b800","#e91e8c","#a855f7","#17b8d4","#2fb84f","#c9826b","#f97316","#0d9488","#6366f1","#84cc16"];
+const SUBJ_MAP=[[/^(ma|mathe)/i,"#f5b800"],[/^(d|deutsch)$/i,"#e91e8c"],[/^(e|en|englisch)$/i,"#e5322d"],[/^(bio)/i,"#c9826b"],[/^(kat|ev|rel|eth|reli)/i,"#a855f7"],[/^(wpf)/i,"#2f6bff"],[/^(mu|musik)/i,"#17b8d4"],[/^(bk|ku|kunst)/i,"#2fb84f"],[/^(ge|gesch)/i,"#2f6bff"],[/^(sp|sport)/i,"#c9826b"],[/^(ph|phy)/i,"#0d9488"],[/^(ch|chem)/i,"#84cc16"],[/^(if|inf)/i,"#6366f1"],[/^(f|fr|franz|l|la|lat|s|sp?a)$/i,"#f97316"]];
+function normCol(v){
+  if(typeof v!=="string")return null;v=v.trim();
+  if(/^#?[0-9a-f]{6}([0-9a-f]{2})?$/i.test(v))return"#"+v.replace("#","").slice(0,6);
+  if(/^#?[0-9a-f]{3}$/i.test(v)){const c=v.replace("#","");return"#"+[...c].map(x=>x+x).join("");}
+  const m=v.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+  return m?"#"+[m[1],m[2],m[3]].map(n=>Math.min(255,+n).toString(16).padStart(2,"0")).join(""):null;
+}
+function dataCol(o,d=0){
+  if(!o||typeof o!=="object"||d>3)return null;
+  for(const k of Object.keys(o)){if(/colou?r/i.test(k)){const c=normCol(o[k]);if(c)return c;}}
+  for(const k of["subject","course","meta","target","lesson"]){const c=dataCol(o[k],d+1);if(c)return c;}
+  return null;
+}
+const lcol=l=>{
+  const c=dataCol(l)||(l.referenced_target_lessons||[]).map(o=>dataCol(o)).find(Boolean);
+  if(c)return c;
+  const nm=String(l.course?.subject?.shortcut||l.course?.subject?.name||lname(l)||"").trim();
+  const hit=SUBJ_MAP.find(([r])=>r.test(nm));if(hit)return hit[1];
+  let h=0;for(const ch of nm.toLowerCase())h=(h*31+ch.charCodeAt(0))>>>0;
+  return SUBJ_PAL[h%SUBJ_PAL.length];
+};
 const isAllDay=l=>l.kind==="HOLIDAY"||(l.ends_at-l.begins_at)>=6*3600;
 const lname=l=>l.meta?.displayname||l.course?.meta?.displayname||l.course?.subject?.name||l.course?.name||"Stunde";
 const sh=(x,k)=>(x[k]||[]).map(t=>t.shortcut).join(", ");
