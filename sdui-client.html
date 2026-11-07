@@ -146,20 +146,26 @@ main{overflow-wrap:anywhere}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}.sw.on{background:var(--ac)}.sw.on::after{left:23px}
 .empty{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:90px;text-align:center}
 .okc{width:84px;height:84px;border-radius:50%;background:#e3f4e8;color:#1fa24a;display:flex;align-items:center;justify-content:center;margin-bottom:10px}.okc .ic{width:40px;height:40px}
+body{background:#f6f6f8}
+.lc{padding:28px 24px!important}.lc h1{font-size:26px;margin:16px 0 4px}
+.logo span{display:flex;width:56px;height:56px;border-radius:18px;background:var(--ac);color:#fff;font-size:30px;font-weight:700;align-items:center;justify-content:center}
+.lc label{display:block;font-weight:500;font-size:14px;margin-top:12px}.lc input:not([type=hidden]){margin:6px 0 4px}
+.pwr{position:relative}.pwr input{padding-right:50px}.pwr .ib{position:absolute;right:4px;top:calc(50% + 1px);transform:translateY(-50%);color:var(--mu)}
+.tab.on .ic{fill:color-mix(in srgb,var(--ac) 20%,transparent)}
+nav a:hover:not(.on){background:#f3f3f6}
 </style>
 </head>
 <body>
-<div id="login"><div class="card">
-<h2 style="margin-top:0">Sdui Web</h2>
-<p class="mu">Inoffizieller Client. Nicht mit Sdui GmbH verbunden.</p>
-<label>Schule suchen<input id="sq" placeholder="z. B. Franziskus Koblenz" autocomplete="off"></label>
-<div id="sres"></div>
-<label>Schul-Link (slink)<input id="slink" placeholder="wird bei Auswahl automatisch gesetzt"></label>
+<div id="login"><div class="card lc">
+<div class="logo"><span>S</span></div>
+<h1>Willkommen</h1><p class="mu" style="margin-top:0">Melde dich bei deiner Schule an.</p>
+<label>Schule<input id="sq" placeholder="Schule suchen, z. B. Franziskus Koblenz" autocomplete="off"></label>
+<div id="sres"></div><input id="slink" type="hidden">
 <label>Benutzername / E-Mail<input id="ident" autocomplete="username"></label>
-<label>Passwort<input id="pw" type="password" autocomplete="current-password"></label>
-<button class="btn" id="go">Anmelden</button>
+<label>Passwort<div class="pwr"><input id="pw" type="password" autocomplete="current-password"><button type="button" class="ib" id="pwt" aria-label="Passwort anzeigen"></button></div></label>
+<button class="btn" id="go" style="width:100%;margin-top:14px">Anmelden</button>
 <p id="lerr" class="err"></p>
-<p class="mu">Tipp: Zugangsdaten bleiben nur in deinem Browser (Token in localStorage).</p>
+<p class="mu" style="font-size:12px">Inoffizieller Client, nicht mit der Sdui GmbH verbunden. Das Token bleibt nur in deinem Browser.</p>
 </div></div>
 
 <div id="app">
@@ -201,6 +207,8 @@ plus:'<path d="M12 5v14M5 12h14"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 x:'<path d="M18 6 6 18M6 6l12 12"/>',
+eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+eyeoff:'<path d="M9.9 4.2A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
 search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
 more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
@@ -291,6 +299,7 @@ async function start(){
 }
 $("#go").onclick=async()=>{
   $("#lerr").textContent="";
+  if(!$("#slink").value.trim())return $("#lerr").textContent="Bitte zuerst deine Schule auswählen.";
   try{
     const d=await api_.login($("#slink").value.trim(),$("#ident").value.trim(),$("#pw").value);
     token=d.access_token;localStorage.setItem("sdui_token",token);$("#pw").value="";start();
@@ -655,11 +664,15 @@ $("#sq").oninput=e=>{
 $("#sres").onclick=e=>{
   const c=e.target.closest("[data-sl]");if(!c)return;
   $("#slink").value=c.dataset.sl;$("#sq").value=c.dataset.n;
-  $("#sres").innerHTML=`<p class="mu">${ic("check")} Ausgewählt: ${esc(c.dataset.n)} (${esc(c.dataset.sl)})</p>`;
+  localStorage.setItem("sdui_slink",c.dataset.sl);localStorage.setItem("sdui_school",c.dataset.n);
+  $("#sres").innerHTML=`<p class="mu">${ic("check")} Schule ausgewählt</p>`;
 };
 
 $("#ident").onkeydown=$("#pw").onkeydown=e=>{if(e.key==="Enter")$("#go").click();};
 new MutationObserver(hydrate).observe($("#view"),{childList:true,subtree:true});
+$("#pwt").innerHTML=ic("eye");
+$("#pwt").onclick=()=>{const p=$("#pw"),show=p.type==="password";p.type=show?"text":"password";$("#pwt").innerHTML=ic(show?"eyeoff":"eye");$("#pwt").setAttribute("aria-label",show?"Passwort verbergen":"Passwort anzeigen");};
+if(localStorage.getItem("sdui_slink")){$("#slink").value=localStorage.getItem("sdui_slink");$("#sq").value=localStorage.getItem("sdui_school")||"";}
 if(token)start();
 </script>
 </body>
