@@ -1158,15 +1158,20 @@ function rcHtml(n,ro){
 /* Der genaue Endpunkt ist nicht öffentlich dokumentiert: bekannte Varianten der Reihe nach probieren, die funktionierende merken */
 async function rcSend(id){
   const base="channels/news/"+encodeURIComponent(id)+"/";
-  let tries=[["POST","confirm"],["PUT","confirm"],["POST","read-confirmation"],["PUT","read-confirmation"],["POST","confirmation"],["PUT","confirmation"],["POST","confirm-read"],["PUT","confirm-read"],["POST","read"],["PUT","read"]];
+  const paths=["confirm","read-confirmation","confirmation","confirmations","confirm-read","read","reading-confirmation"],methods=["POST","PUT","PATCH"];
+  let tries=[];for(const pa of paths)for(const me of methods)tries.push([me,pa]);
   const m=localStorage.getItem("sdui_rc_ep");
   if(m){const [me,pa]=m.split(" ");tries=[[me,pa],...tries.filter(t=>!(t[0]===me&&t[1]===pa))];}
-  let last=null;
+  const log=[];
   for(const [method,path] of tries){
     try{await api(base+path,{method,body:{}});localStorage.setItem("sdui_rc_ep",method+" "+path);return;}
-    catch(e){last=e;if(e.status!==404&&e.status!==405)throw e;}
+    catch(e){
+      log.push(method+" "+path+" → "+(e.status||"?")+" "+e.message);
+      if(e.status!==404&&e.status!==405){const er=new Error(e.message+"\n\nVersuche:\n"+log.join("\n"));er.status=e.status;throw er;}
+    }
   }
-  throw last||new Error("Kein passender Endpunkt gefunden");
+  console.warn("Lesebestätigung: alle Versuche fehlgeschlagen\n"+log.join("\n"));
+  throw new Error("Kein passender Endpunkt gefunden.\n\nVersuche:\n"+log.join("\n"));
 }
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-sv],[data-svs],[data-rc]");if(!b||b.disabled)return;
