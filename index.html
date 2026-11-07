@@ -698,10 +698,12 @@ const lcol=l=>{
 };
 const isAllDay=l=>l.kind==="HOLIDAY"||(l.ends_at-l.begins_at)>=6*3600;
 const lname=l=>l.meta?.displayname||l.course?.meta?.displayname||l.course?.subject?.name||l.course?.name||"Stunde";
+const roomNr=b=>{const t=String(b?.name||b?.shortcut||"").trim(),m=t.match(/\(([^()]+)\)\s*$/);return m?m[1].trim():(b?.shortcut||t);};
+const shR=x=>(x?.bookables||[]).map(roomNr).filter(Boolean).join(", ");
 const sh=(x,k)=>(x[k]||[]).map(t=>t.shortcut).join(", ");
 const badge=k=>KIND[k]?`<span class="badge" style="background:${KIND[k][1]}">${KIND[k][0]}</span>`:"";
 function lessonHtml(l,i){
-  const o=(l.referenced_target_lessons||[])[0],t=sh(l,"teachers"),r=sh(l,"bookables"),ot=o?sh(o,"teachers"):"",or=o?sh(o,"bookables"):"";
+  const o=(l.referenced_target_lessons||[])[0],t=sh(l,"teachers"),r=shR(l),ot=o?sh(o,"teachers"):"",or=o?shR(o):"";
   return `<div class="ls ${l.kind||""}" data-i="${i}" style="--c:${lcol(l)}"><div class="lt">${fmtT(l.begins_at)}<span class="mu">${fmtT(l.ends_at)}</span></div><div class="lb"><div><b>${esc(lname(l))}</b> ${badge(l.kind)}</div>
   <div class="mu">${ic("user")} ${esc(t||"–")}${ot&&ot!==t?` <s>${esc(ot)}</s>`:""} &nbsp;${ic("room")} ${esc(r||"–")}${or&&or!==r?` <s>${esc(or)}</s>`:""}</div>
   ${o&&lname(o)!==lname(l)?`<div class="mu">statt <s>${esc(lname(o))}</s></div>`:""}${l.comment?`<div class="mu">${esc(l.comment)}</div>`:""}</div></div>`;
@@ -724,7 +726,7 @@ async function timetable(partial){
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 function blockHtml(c,a,P,x0=0,w=100,all){
   const l=c.l,o=(l.referenced_target_lessons||[])[0],sub=l.kind==="SUBSTITUTION"&&o;
-  const t=sh(l,"teachers"),r=sh(l,"bookables"),ot=o?sh(o,"teachers"):"",or=o?sh(o,"bookables"):"",nm=lname(l),on=o?lname(o):"";
+  const t=sh(l,"teachers"),r=shR(l),ot=o?sh(o,"teachers"):"",or=o?shR(o):"",nm=lname(l),on=o?lname(o):"";
   const pill=(v,old)=>sub&&old&&old!==v?`<span class="pt">${esc(v)}</span> <s>${esc(old)}</s>`:esc(v);
   const name=sub&&on&&on!==nm?`<span class="pt">${esc(nm)}</span> <s>${esc(on)}</s>`:esc(nm);
   const col=all?((KIND[l.kind]||[])[1]||lcol(l)):lcol(l);
@@ -779,7 +781,7 @@ const srow=(i,l,v)=>v?`<div class="srow">${ic(i)}<div><div class="mu">${l}</div>
 async function openSheet(l){
   curL=l;
   const o=(l.referenced_target_lessons||[])[0],d=new Date(l.begins_at*1000),c=lcol(l),canc=l.kind==="CANCLED",sub=l.kind==="SUBSTITUTION"&&o;
-  const T=x=>(x?.teachers||[]).map(t=>t.shortcut||t.name).filter(Boolean),R=x=>(x?.bookables||[]).map(b=>b.name||b.shortcut).filter(Boolean),G=x=>(x?.grades||[]).map(g=>g.name||g.shortcut).filter(Boolean);
+  const T=x=>(x?.teachers||[]).map(t=>t.shortcut||t.name).filter(Boolean),R=x=>(x?.bookables||[]).map(roomNr).filter(Boolean),G=x=>(x?.grades||[]).map(g=>g.name||g.shortcut).filter(Boolean);
   const pl=(a,k)=>a.map(v=>`<span class="pill ${k||""}">${esc(v)}</span>`).join("");
   const row=(i,lab,a,old)=>{const oa=sub?(old||[]).filter(v=>!a.includes(v)):[];return `<div class="drow"><span class="dic">${ic(i)}</span><span class="dl">${lab}</span><span class="dv">${pl(a,canc?"x":"")}${pl(oa,"x")}</span></div>`;};
   const cm=[l.comment,l.meta?.moved_comment].filter(Boolean).join(" · "),nm=lname(l);
