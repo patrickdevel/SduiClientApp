@@ -837,12 +837,13 @@ const HINTS={"news.posted":"hat eine News geteilt","introductions.conversation":
 const isKey=t=>/^[a-z_]+(\.[a-z_]+)+$/.test(t||"");
 const hintText=k=>HINTS[k]||"Systemnachricht";
 const isDel=x=>!!(x&&(x.deleted_at||x.unset_at));
+const dupName=x=>{const n=(x?.file?.name||"").trim(),c=(x?.content||"").trim();return !!n&&!!c&&(c===n||c===n.replace(/\.[^.]+$/,""));};
 function previewOf(x){
   if(!x)return"";
   const who=x.user?.meta?.displayname||"";
   if(x.content==="news.posted"||x.target_type==="news")return(who?who+" ":"")+"hat eine News geteilt";
   if(isKey(x.content))return hintText(x.content);
-  if(x.content)return x.content;
+  if(x.content&&!dupName(x))return x.content;
   if(x.file)return"📎 "+(x.file.name||"Datei");
   return"";
 }
@@ -853,12 +854,12 @@ function msgHtml(x,mine,cont){
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
   else if(isKey(x.content))b=`<i>${esc(hintText(x.content))}</i>`;
   else if(x.type==="HINT")b=`<i>${esc(x.content||"")}</i>`;
-  else b=esc(x.content||"");
+  else b=dupName(x)?"":esc(x.content||"");
   const f=x.file,m=f?.meta||{},isImg=!!f&&(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""));
   const img=isImg?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:"";
   const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
   const who=mine||cont?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`,cc=`${mine?" me":""}${cont?" cont":""}`;
-  if(isImg&&!x.content)return `<div class="msg imgm${cc}">${who}<div class="iw">${img}<div class="tm ov">${t}</div></div></div>`;
+  if(isImg&&!(x.content&&!dupName(x)))return `<div class="msg imgm${cc}">${who}<div class="iw">${img}<div class="tm ov">${t}</div></div></div>`;
   if(f)b+=isImg?img:fileHtml(f.name,f.extension,f.size??m.size,m.download_uri||m.uri);
   return `<div class="msg${cc}">${who}${b}<div class="tm">${t}</div></div>`;
 }
