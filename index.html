@@ -157,6 +157,12 @@ body.inchat #ms{flex:1}
 .cin input:not([hidden]):focus{outline:2px solid var(--ac);background:#fff}
 .cin .ib.pl{width:44px;height:44px}
 .msg.cont{margin-top:-3px}
+.opn{display:flex;align-items:flex-start;gap:14px;margin:18px 0 12px}
+.opn>i{flex:1;height:1px;background:#8a8a92;margin-top:26px}
+.opc{display:flex;flex-direction:column;align-items:center;text-align:center}
+.opi{width:52px;height:52px;border-radius:50%;background:#e2f4e8;color:#00a63a;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.opi .ic{width:26px;height:26px;fill:currentColor;stroke:currentColor}
+.opc b{font-weight:500;font-size:15px;color:#222}.opc small{font-size:12px;color:var(--mu);margin-top:2px}
 .msg.imgm{width:fit-content;padding:5px}.msg.imgm .who{padding:2px 6px 4px}
 .iw{position:relative;line-height:0}.iw .nimg{margin:0;border-radius:11px}
 .tm.ov{position:absolute;right:8px;bottom:8px;background:rgba(40,40,50,.62);color:#fff;border-radius:10px;padding:2px 8px;line-height:1.4;font-size:12px}
@@ -1018,10 +1024,13 @@ const HINTS={"news.posted":"hat eine News geteilt","introductions.conversation":
 const isKey=t=>/^[a-z_]+(\.[a-z_]+)+$/.test(t||"");
 const KURS_TXT="Sobald Schüler*innen ihre Kurswahl im Sdui Stundenplan getroffen haben, werden sie anschließend in diese Kurs-Gruppe synchronisiert. Lehrkräfte werden nach der Wahl des Kürzels hinzugefügt";
 const isNewsMsg=x=>!!x&&(x.target_type==="news"||x.content==="news.posted");
-const isSys=x=>!!x&&!isNewsMsg(x)&&!isDel(x)&&(isKey(x.content)||x.type==="HINT");
+const isOpenMsg=x=>!!x&&!isNewsMsg(x)&&!isDel(x)&&((isKey(x.content)&&/open/i.test(x.content))||/Konversation.*geöffnet/i.test(x.content||""));
+const isSys=x=>!!x&&!isNewsMsg(x)&&!isDel(x)&&(isKey(x.content)||x.type==="HINT"||isOpenMsg(x));
+const openHtml=x=>`<div class="opn"><i></i><div class="opc"><span class="opi">${ic("chat")}</span><b>Chat offen</b><small>${new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</small></div><i></i></div>`;
 /* Echter Text einer Systemnachricht: nie "Systemnachricht", sondern der tatsächliche Inhalt */
 function sysText(x){
   const k=x.content||"";
+  if(isOpenMsg(x)&&isKey(k))return(x.user?.meta?.displayname?x.user.meta.displayname+" ":"")+"hat die Konversation für diesen Chat geöffnet";
   if(HINTS[k])return HINTS[k];
   if(/course|kurs/i.test(k))return KURS_TXT;
   const f=[x.content_rendered,x.meta?.message,x.meta?.content,x.meta?.text,x.hint,x.text].find(v=>typeof v==="string"&&v.trim()&&!isKey(v.trim()));
@@ -1042,6 +1051,7 @@ function previewOf(x){
 }
 function msgHtml(x,mine,cont){
   if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
+  if(isOpenMsg(x))return openHtml(x);
   if(isSys(x))return `<div class="intro">${esc(sysText(x))}</div>`;
   let b="";
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
