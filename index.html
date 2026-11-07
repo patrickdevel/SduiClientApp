@@ -1167,7 +1167,7 @@ async function rcSend(id){
     try{await api(base+path,{method,body:{}});localStorage.setItem("sdui_rc_ep",method+" "+path);return;}
     catch(e){
       log.push(method+" "+path+" → "+(e.status||"?")+" "+e.message);
-      if(e.status!==404&&e.status!==405){const er=new Error(e.message+"\n\nVersuche:\n"+log.join("\n"));er.status=e.status;throw er;}
+      if(e.status!==404&&e.status!==405&&!(e.status===400&&/HTTP-Methode|method/i.test(e.message))){const er=new Error(e.message+"\n\nVersuche:\n"+log.join("\n"));er.status=e.status;throw er;}
     }
   }
   console.warn("Lesebestätigung: alle Versuche fehlgeschlagen\n"+log.join("\n"));
