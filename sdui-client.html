@@ -44,6 +44,25 @@ h2{font-size:26px;margin:4px 0 14px}
 .nimg{max-width:100%;max-height:420px;border-radius:14px;display:block;margin:8px 0}
 .shared{border-left:4px solid var(--ac);background:#f4f7ff;border-radius:10px;padding:8px 10px;margin-top:4px}
 .msg.me .shared{background:rgba(255,255,255,.18);color:#fff;border-color:#fff}
+.ic{width:1.1em;height:1.1em;vertical-align:-.2em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav a .ic{margin-right:6px;width:1.25em;height:1.25em;vertical-align:-.3em}
+.nbody{max-height:150px;overflow:hidden;margin-top:4px;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.pills{display:flex;gap:6px;overflow:auto;margin-bottom:14px}
+.pill{border:0;background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 6px rgba(20,20,40,.07);color:var(--tx)}
+.pill.on{background:var(--ac);color:#fff}
+.ls{display:flex;gap:12px;background:#fff;border-radius:18px;padding:12px;margin-bottom:8px;box-shadow:0 2px 10px rgba(20,20,40,.06);cursor:pointer;border-left:6px solid var(--c)}
+.ls.CANCLED{opacity:.6}.ls.CANCLED b{text-decoration:line-through}
+.ls.SUBSTITUTION{background:#fff8ec}
+.lt{display:flex;flex-direction:column;font-weight:600;min-width:46px;font-size:13px}.lt .mu{font-weight:400}
+.lb{min-width:0;font-size:14px}
+.badge{color:#fff;border-radius:999px;font-size:11px;padding:2px 8px;font-weight:600;vertical-align:middle}
+#sheet{position:fixed;inset:0;z-index:50;pointer-events:none}
+.sh-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:.25s}
+.sh-box{position:absolute;left:0;right:0;bottom:0;margin:auto;max-width:560px;max-height:85vh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:10px 20px 28px;transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+#sheet.open{pointer-events:auto}#sheet.open .sh-bg{opacity:1}#sheet.open .sh-box{transform:none}
+.sh-grab{width:44px;height:5px;border-radius:9px;background:#d8d8de;margin:0 auto 14px}
+.sh-top{border-left:6px solid var(--c);padding-left:12px;margin-bottom:12px}.sh-top h3{margin:0 0 2px}
+.srow{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}.srow .ic{margin-top:3px;color:var(--mu)}
 </style>
 </head>
 <body>
@@ -65,6 +84,7 @@ h2{font-size:26px;margin:4px 0 14px}
 <main id="view"></main>
 </div>
 
+<div id="sheet"><div class="sh-bg"></div><div class="sh-box"><div class="sh-grab"></div><div id="sh-c"></div></div></div>
 <script>
 const BASE="https://api.sdui.app/v1/";
 // Auf Vercel/Webserver läuft alles über den Proxy /api/sdui (wegen CORS), lokal als Datei direkt.
@@ -72,6 +92,30 @@ const PROXY=location.protocol==="file:"?"":"/api/sdui?u=";
 let token=localStorage.getItem("sdui_token")||"";
 let me=null;
 const $=s=>document.querySelector(s);
+
+const ICONS={
+pin:'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+news:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>',
+lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+poll:'<path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+room:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',
+cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+book:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+cap:'<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+group:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
+};
+function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
+const NAVIC={news:"news",timetable:"cal",chats:"chat",courses:"cap",profile:"user"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 async function api(path,{method="GET",params,body}={}){
@@ -94,12 +138,14 @@ const api_ = {
   send:(id,content)=>api(`channels/chats/${id}/messages`,{method:"POST",body:{content}}),
   courses:()=>api("users/self/timetable/courses"),
   activity:()=>api("users/self/activity-summary"),
+  newsById:id=>api("channels/news/"+id),
+  classbook:(id,date)=>api(`timetables/lessons/${id}/classbook-entry`,{params:{date}}),
   vote:(id,vote)=>api(`channels/surveys/${id}/vote`,{method:"PUT",body:vote})
 };
 
 const pages={news:"News",timetable:"Stundenplan",chats:"Chats",courses:"Kurse",profile:"Profil"};
 function buildNav(){
-  $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${v}</a>`).join("")+'<a id="out">Abmelden</a>';
+  $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();location.hash=a.dataset.p;};
 }
 function route(){
@@ -132,12 +178,12 @@ async function news(){
   load();
   try{
     const items=await api_.news(npage);
-    V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · 📌":""}</div>
+    V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · "+ic("pin"):""}</div>
       <h3 style="margin:6px 0">${esc(n.title)}</h3>
       <div class="news-body">${n.content_rendered||esc(n.content)}</div>
       ${attHtml(n.attachments)}
       ${n.survey?surveyHtml(n.survey):""}</div>`).join("")+(items.length?"":'<p class="mu">Keine News.</p>')+
-      `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">← Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter →</button></div>`);
+      `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
     $("#np").onclick=()=>{npage--;news();};$("#nn").onclick=()=>{npage++;news();};
   }catch(e){fail(e);}
 }
@@ -146,12 +192,12 @@ function attHtml(list){
     const u=a.meta?.temp_uri||a.meta?.uri||a.meta?.download_uri,d=a.meta?.download_uri||u;
     if(/^(jpe?g|png|gif|webp|bmp)$/i.test(a.extension||"")||a.file_type==="image")
       return `<a href="${esc(d)}" target="_blank" rel="noopener"><img class="nimg" loading="lazy" src="${esc(u)}" alt="${esc(a.name)}"></a>`;
-    return `<div><a href="${esc(d)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></div>`;
+    return `<div><a href="${esc(d)}" target="_blank" rel="noopener">${ic("clip")} ${esc(a.name)}</a></div>`;
   }).join("");
 }
 function surveyHtml(s){
   const o=s.meta?.options||[];
-  return `<div style="margin-top:10px"><b>📊 ${esc(s.question)}</b>`+o.map(x=>`<div><button class="btn ghost" style="margin-top:6px" ${s.meta.is_over?"disabled":""} data-sv="${s.uuid}" data-o="${x.uuid}">${x.is_chosen?"✅ ":""}${esc(x.name)}</button></div>`).join("")+`</div>`;
+  return `<div style="margin-top:10px"><b>${ic("poll")} ${esc(s.question)}</b>`+o.map(x=>`<div><button class="btn ghost" style="margin-top:6px" ${s.meta.is_over?"disabled":""} data-sv="${s.uuid}" data-o="${x.uuid}">${x.is_chosen?ic("check")+" ":""}${esc(x.name)}</button></div>`).join("")+`</div>`;
 }
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-sv]");if(!b)return;
@@ -159,29 +205,67 @@ document.addEventListener("click",async e=>{
 });
 
 /* TIMETABLE */
-let weekOff=0;
-const iso=d=>d.toISOString().slice(0,10);
+let weekOff=0,selDay=null,ttView="day",ttL=[];
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const KIND={SUBSTITUTION:["Vertretung","#f59e0b"],CANCLED:["Entfall","#e5484d"],EVENT:["Event","#2f6bff"],BOOKABLE_CHANGE:["Raumänderung","#0ea5a4"],HOLIDAY:["Ferien","#8b5cf6"]};
+const fmtT=t=>new Date(t*1000).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+const lcol=l=>{const c=l.course?.subject?.color||l.course?.meta?.color||"";return /^#?[0-9a-f]{3,8}$/i.test(c)?(c[0]==="#"?c:"#"+c):"#2f6bff"};
+const lname=l=>l.meta?.displayname||l.course?.meta?.displayname||l.course?.subject?.name||l.course?.name||"Stunde";
+const sh=(x,k)=>(x[k]||[]).map(t=>t.shortcut).join(", ");
+const badge=k=>KIND[k]?`<span class="badge" style="background:${KIND[k][1]}">${KIND[k][0]}</span>`:"";
+function lessonHtml(l,i){
+  const o=(l.referenced_target_lessons||[])[0],t=sh(l,"teachers"),r=sh(l,"bookables"),ot=o?sh(o,"teachers"):"",or=o?sh(o,"bookables"):"";
+  return `<div class="ls ${l.kind||""}" data-i="${i}" style="--c:${lcol(l)}"><div class="lt">${fmtT(l.begins_at)}<span class="mu">${fmtT(l.ends_at)}</span></div><div class="lb"><div><b>${esc(lname(l))}</b> ${badge(l.kind)}</div>
+  <div class="mu">${ic("user")} ${esc(t||"–")}${ot&&ot!==t?` <s>${esc(ot)}</s>`:""} &nbsp;${ic("room")} ${esc(r||"–")}${or&&or!==r?` <s>${esc(or)}</s>`:""}</div>
+  ${o&&lname(o)!==lname(l)?`<div class="mu">statt <s>${esc(lname(o))}</s></div>`:""}${l.comment?`<div class="mu">${esc(l.comment)}</div>`:""}</div></div>`;
+}
 async function timetable(){
   load();
-  const now=new Date();const day=(now.getDay()+6)%7;
-  const mon=new Date(now);mon.setDate(now.getDate()-day+weekOff*7);
+  const now=new Date(),dow=(now.getDay()+6)%7;
+  const mon=new Date(now);mon.setDate(now.getDate()-dow+weekOff*7);
   const fri=new Date(mon);fri.setDate(mon.getDate()+4);
   try{
     const t=await api_.timetable(iso(mon),iso(fri));
-    const names=["Mo","Di","Mi","Do","Fr"];
-    const cols=names.map((n,i)=>{
-      const d=new Date(mon);d.setDate(mon.getDate()+i);
-      const ls=(t.lessons||[]).filter(l=>new Date(l.begins_at*1000).toDateString()===d.toDateString()).sort((a,b)=>a.begins_at-b.begins_at);
-      return `<div class="day"><h4>${n} ${d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</h4>`+(ls.map(l=>{
-        const col=l.course?.subject?.color||l.course?.meta?.color||"";
-        const tm=new Date(l.begins_at*1000).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-        return `<div class="les ${esc(l.kind||"")}" style="${/^#?[0-9a-f]{3,8}$/i.test(col)?`border-color:${col[0]==="#"?col:"#"+col}`:""}"><b>${esc(l.meta?.displayname||l.course?.meta?.displayname||l.course?.name||"Stunde")}</b><br><span class="mu">${tm} · ${esc((l.teachers||[]).map(x=>x.shortcut).join(", "))} ${esc((l.bookables||[]).map(x=>x.shortcut).join(", "))}</span>${l.comment?`<br><span class="mu">${esc(l.comment)}</span>`:""}</div>`;
-      }).join("")||'<span class="mu">–</span>')+`</div>`;
-    }).join("");
-    V(`<div class="row" style="justify-content:space-between"><h2>Stundenplan</h2><div class="row"><button class="btn ghost" id="pw_">←</button><button class="btn ghost" id="cw">Heute</button><button class="btn ghost" id="nw">→</button></div></div><div class="tt">${cols}</div><p class="mu">Stand: ${esc(t.last_updated_at||"")}</p>`);
-    $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};$("#cw").onclick=()=>{weekOff=0;timetable();};
+    ttL=(t.lessons||[]).sort((x,y)=>x.begins_at-y.begins_at);
+    if(selDay===null)selDay=weekOff===0?Math.min(dow,4):0;
+    drawTT(mon,t.last_updated_at);
   }catch(e){fail(e);}
 }
+function drawTT(mon,upd){
+  const days=["Mo","Di","Mi","Do","Fr"].map((n,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return{n,d,ls:ttL.map((l,ix)=>[l,ix]).filter(([l])=>new Date(l.begins_at*1000).toDateString()===d.toDateString())};});
+  const col=x=>x.ls.map(([l,ix])=>lessonHtml(l,ix)).join("")||'<p class="mu">Keine Stunden.</p>';
+  const body=ttView==="day"?col(days[selDay]):`<div class="tt">${days.map(x=>`<div><h4>${x.n} ${x.d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</h4>${col(x)}</div>`).join("")}</div>`;
+  V(`<div class="row" style="justify-content:space-between"><h2>Stundenplan</h2><div class="row"><button class="btn ghost" id="pw_">${ic("left")}</button><button class="btn ghost" id="cw">Heute</button><button class="btn ghost" id="nw">${ic("right")}</button></div></div>
+  <div class="pills">${days.map((x,i)=>`<button class="pill ${ttView==="day"&&i===selDay?"on":""}" data-d="${i}">${x.n} ${x.d.getDate()}.</button>`).join("")}<button class="pill ${ttView==="week"?"on":""}" id="wv">Woche</button></div>
+  ${body}<p class="mu">Stand: ${esc(upd?new Date(upd).toLocaleString("de-DE"):"")}</p>`);
+  $("#pw_").onclick=()=>{weekOff--;selDay=0;timetable();};$("#nw").onclick=()=>{weekOff++;selDay=0;timetable();};$("#cw").onclick=()=>{weekOff=0;selDay=null;timetable();};
+  $("#wv").onclick=()=>{ttView="week";drawTT(mon,upd);};
+  document.querySelectorAll(".pill[data-d]").forEach(b=>b.onclick=()=>{ttView="day";selDay=+b.dataset.d;drawTT(mon,upd);});
+}
+/* Bottom Sheet */
+const closeSheet=()=>$("#sheet").classList.remove("open");
+const srow=(i,l,v)=>v?`<div class="srow">${ic(i)}<div><div class="mu">${l}</div>${v}</div></div>`:"";
+async function openSheet(l){
+  const o=(l.referenced_target_lessons||[])[0],d=new Date(l.begins_at*1000);
+  const tn=x=>(x.teachers||[]).map(t=>esc(t.name||t.shortcut)+(t.name&&t.shortcut?` (${esc(t.shortcut)})`:"")).join("<br>");
+  const rn=x=>(x.bookables||[]).map(b=>esc(b.name||b.shortcut)).join(", ");
+  $("#sh-c").innerHTML=`<div class="sh-top" style="--c:${lcol(l)}"><h3>${esc(lname(l))} ${badge(l.kind)}</h3><div class="mu">${d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"})}</div></div>`+
+    srow("clock","Zeit",`${fmtT(l.begins_at)} – ${fmtT(l.ends_at)}${l.meta?.displayname_hour?" · "+esc(l.meta.displayname_hour):""}`)+
+    srow("user",l.kind==="SUBSTITUTION"?"Vertretung durch":"Lehrkraft",tn(l)||"–")+
+    srow("room","Raum",rn(l))+srow("group","Klasse(n)",esc((l.grades||[]).map(g=>g.shortcut||g.name).join(", ")))+
+    (o?srow("cal","Eigentlich geplant",`${esc(lname(o))}<br><span class="mu">${tn(o)} ${rn(o)?"· "+rn(o):""}</span>`):"")+
+    srow("info","Hinweis",esc([l.comment,l.meta?.moved_comment].filter(Boolean).join(" · ")))+
+    `<div id="cb" class="mu">Lade Klassenbuch …</div>`;
+  $("#sheet").classList.add("open");
+  try{
+    const e=await api_.classbook(l.id,iso(d));
+    const hw=(e.homeworks||[]).map(h=>`${esc(h.message)}<br><span class="mu">bis ${new Date(h.expires_at).toLocaleDateString("de-DE")}</span>`).join("<hr>");
+    $("#cb").innerHTML=(srow("book","Thema",esc(e.topic?.message||""))+srow("book","Hausaufgaben",hw))||'<span class="mu">Kein Klassenbucheintrag.</span>';
+  }catch(_){$("#cb").innerHTML='<span class="mu">Klassenbuch nicht verfügbar.</span>';}
+}
+$("#sheet").onclick=e=>{if(e.target.classList.contains("sh-bg"))closeSheet();};
+document.addEventListener("keydown",e=>e.key==="Escape"&&closeSheet());
+$("#view").addEventListener("click",e=>{const c=e.target.closest(".ls");if(c)openSheet(ttL[+c.dataset.i]);});
 
 /* CHATS */
 async function chats(){
@@ -195,25 +279,31 @@ async function chats(){
     document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c,el.dataset.p==='1',el.dataset.n));
   }catch(e){fail(e);}
 }
+function newsCard(n){
+  if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered||esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
+  if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><span class="mu">Lade News …</span></div>`;
+  return `<div class="shared">${ic("news")} <b>News nicht mehr verfügbar</b><br><span class="mu">Sie wurde gelöscht oder du hast keinen Zugriff.</span></div>`;
+}
 const HINTS={"news.posted":"hat eine News geteilt"};
 function msgHtml(x,mine){
   const who=esc(x.user?.meta?.displayname||""),t=new Date(x.created_at).toLocaleString("de-DE");
   let b="";
-  if(x.target_type==="news"||x.content==="news.posted")b=`<div class="shared">📰 <b>News geteilt</b><br>${esc(x.target?.title||"")}</div>`;
+  if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
   else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
-  if(f)b+=m.has_image?`<img class="nimg" loading="lazy" src="${esc(m.content_uri||m.thumbnail_uri||m.uri)}">`:`<div><a href="${esc(m.download_uri||m.uri)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a></div>`;
+  if(f)b+=m.has_image?`<img class="nimg" loading="lazy" src="${esc(m.content_uri||m.thumbnail_uri||m.uri)}">`:`<div><a href="${esc(m.download_uri||m.uri)}" target="_blank" rel="noopener">${ic("clip")} ${esc(f.name)}</a></div>`;
   return `<div class="msg ${mine?"me":""}"><div class="mu" style="${mine?"color:#dfe7ff":""}">${who} · ${t}</div>${b}</div>`;
 }
 async function openChat(id,canPost=true,name="Chat"){
   load();
   try{
     const m=(await api_.msgs(id,1)).slice().reverse();
-    V(`<button class="btn ghost" id="bk">← Chats</button><h2>${esc(name)}</h2><div id="ms">`+m.map(x=>{
+    V(`<button class="btn ghost" id="bk">${ic("left")} Chats</button><h2>${esc(name)}</h2><div id="ms">`+m.map(x=>{
       return msgHtml(x,x.user?.id===me.id);
-    }).join("")+`</div>`+(canPost?`<div class="row"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">Senden</button></div>`:`<div class="card mu">🔒 Einweg-Chat: Hier können nur Admins schreiben.</div>`));
+    }).join("")+`</div>`+(canPost?`<div class="row"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">${ic("send")} Senden</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`));
     $("#bk").onclick=chats;
+    document.querySelectorAll("[data-nid]").forEach(async el=>{try{el.outerHTML=newsCard(await api_.newsById(el.dataset.nid));}catch(_){el.outerHTML=newsCard(null);}});
     const send=async()=>{const v=$("#mi").value.trim();if(!v)return;try{await api_.send(id,v);openChat(id,canPost,name);}catch(e){alert(e.message);}};
     if(canPost){$("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();}
   }catch(e){fail(e);}
@@ -236,7 +326,7 @@ async function profile(){
     V(`<h2>Profil</h2><div class="card"><h3 style="margin-top:0">${esc(u.meta?.displayname||u.firstname+" "+u.lastname)}</h3>
       <p class="mu">${esc(u.meta?.subtitle||"")}</p>
       <p>Schule: ${esc(u.school?.name)}<br>Klasse: ${esc(u.grade?.name||"–")}<br>Rolle: ${esc(u.primary_role?.name||u.type)}<br>E-Mail: ${esc(u.email||"–")}</p></div>
-      ${a?`<div class="card"><b>Aktivität</b><p style="margin-bottom:0">💬 Ungelesene Chats: <b>${a.chat?.unread_count??0}</b><br>🔔 Neue Benachrichtigungen: <b>${a.notification?.unread_count??0}</b></p></div>`:""}`);
+      ${a?`<div class="card"><b>Aktivität</b><p style="margin-bottom:0">${ic("chat")} Ungelesene Chats: <b>${a.chat?.unread_count??0}</b><br>${ic("bell")} Neue Benachrichtigungen: <b>${a.notification?.unread_count??0}</b></p></div>`:""}`);
   }catch(e){fail(e);}
 }
 
@@ -256,7 +346,7 @@ $("#sq").oninput=e=>{
 $("#sres").onclick=e=>{
   const c=e.target.closest("[data-sl]");if(!c)return;
   $("#slink").value=c.dataset.sl;$("#sq").value=c.dataset.n;
-  $("#sres").innerHTML=`<p class="mu">✅ Ausgewählt: ${esc(c.dataset.n)} (${esc(c.dataset.sl)})</p>`;
+  $("#sres").innerHTML=`<p class="mu">${ic("check")} Ausgewählt: ${esc(c.dataset.n)} (${esc(c.dataset.sl)})</p>`;
 };
 
 if(token)start();
