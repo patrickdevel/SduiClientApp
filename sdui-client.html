@@ -179,8 +179,8 @@ nav a:hover:not(.on){background:#f3f3f6}
 .pillw{display:inline-block;background:#fdebd9;color:#b4651c;border-radius:999px;padding:5px 14px;font-size:13px;margin:4px 0 6px}
 .mn{display:block;font-style:normal;font-size:12px;color:var(--mu);height:18px}
 .gd b{font-size:24px;font-weight:300;color:#666}.gd.today b{color:var(--ac);font-weight:600}
-.pl{position:absolute;left:0;right:0;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;border-top:1px solid #e6e6ea}
-.pl b{font-size:16px;font-weight:600;color:#222}.pl small{font-size:11.5px;color:var(--mu)}.pl.br{justify-content:center;color:var(--mu);font-size:14px}
+.tpl{position:absolute;left:0;right:0;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;border-top:1px solid #e6e6ea}
+.tpl b{font-size:16px;font-weight:600;color:#222}.tpl small{font-size:11.5px;color:var(--mu)}.tpl.br{justify-content:center;color:var(--mu);font-size:14px}
 .gry{position:absolute;left:0;right:0;background:#e6e6e8}
 .blk{justify-content:space-between;font-size:12px;border-radius:6px}.blk b{font-size:15px}.blk.SUBSTITUTION{outline:0}
 .blk.all{background:color-mix(in srgb,var(--c) 14%,#fff)}.blk.all b{font-size:12px;word-break:break-word}
@@ -190,7 +190,7 @@ nav a:hover:not(.on){background:#f3f3f6}
 .gchip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));z-index:10;display:flex;align-items:center;gap:10px;background:#fff;border-radius:999px;padding:6px 18px 6px 6px;box-shadow:0 4px 16px rgba(20,20,40,.16)}
 .gchip .ic{width:34px;height:34px;padding:8px;background:#ececef;border-radius:50%;color:#555}
 @media(min-width:701px){.gchip{bottom:20px}}
-@media(max-width:700px){.gh,.gb{grid-template-columns:46px repeat(5,minmax(0,1fr))!important}.pl b{font-size:13px}.pl small{font-size:10px}.gd b{font-size:19px}.blk b{font-size:11px}}
+@media(max-width:700px){.gh,.gb{grid-template-columns:46px repeat(5,minmax(0,1fr))!important}.tpl b{font-size:13px}.tpl small{font-size:10px}.gd b{font-size:19px}.blk b{font-size:11px}}
 #mdl.open,#mdl.out{display:flex}
 #mdl.open .mbg{animation:fi .2s ease both}#mdl.open .mbox{animation:pop .3s cubic-bezier(.2,.9,.3,1.15) both}
 #mdl.out .mbg{animation:fo .18s ease both}#mdl.out .mbox{animation:po .18s ease both}
@@ -198,6 +198,11 @@ nav a:hover:not(.on){background:#f3f3f6}
 @keyframes pop{from{opacity:0;transform:translateY(26px) scale(.94)}}@keyframes po{to{opacity:0;transform:translateY(14px) scale(.96)}}
 .menu:not([hidden]){animation:pm .18s ease both}@keyframes pm{from{opacity:0;transform:translateY(-6px) scale(.97)}}
 @media(prefers-reduced-motion:reduce){#mdl .mbg,#mdl .mbox,.menu{animation:none!important}}
+.fcard{display:flex;align-items:center;gap:12px;padding:8px 0;color:var(--tx);text-decoration:none;cursor:pointer}
+.ficon{flex:none;width:36px;height:42px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;border-radius:7px;clip-path:polygon(0 0,68% 0,100% 26%,100% 100%,0 100%)}
+.fmeta{display:flex;flex-direction:column;min-width:0}.fn{font-size:16px;line-height:1.3;word-break:break-word}
+.fs{font-size:13px;color:var(--mu);display:flex;align-items:center;gap:6px}
+.fdl{display:inline-flex;width:15px;height:15px;border:1.5px solid var(--mu);border-radius:50%;align-items:center;justify-content:center}.fdl .ic{width:9px;height:9px;stroke-width:2.6}
 </style>
 </head>
 <body>
@@ -255,6 +260,7 @@ x:'<path d="M18 6 6 18M6 6l12 12"/>',
 eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
 eyeoff:'<path d="M9.9 4.2A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/>',
+dl:'<path d="M12 5v10m-4-4 4 4 4-4M6 19h12"/>',
 down:'<path d="m6 9 6 6 6-6"/>',
 filter:'<path d="M22 3H2l8 9.46V19l4 2v-8.54z"/>',
 bellx:'<path d="M13.7 21a2 2 0 0 1-3.4 0M18.6 14.6A9 9 0 0 0 18 8a6 6 0 0 0-9.3-5M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14M2 2l20 20"/>',
@@ -416,7 +422,10 @@ document.addEventListener("click",e=>{
   const cm=e.target.closest("[data-cm]");
   if(cm){cm.closest(".menu").hidden=true;chatAct(cm.dataset.cm,cm.closest(".chat").dataset.c);return;}
   const cf=e.target.closest("[data-cf]");
-  if(cf){cf.closest(".menu").hidden=true;const t={unread:"cfu",arch:"carch"}[cf.dataset.cf];if(t){sessionStorage.getItem(t)?sessionStorage.removeItem(t):sessionStorage.setItem(t,"1");chats();}else alert("Diese Ansicht ist noch nicht eingebaut.");return;}
+  if(cf){cf.closest(".menu").hidden=true;const k=cf.dataset.cf;
+    if(k==="soon")alert("Diese Ansicht ist noch nicht eingebaut.");
+    else{const was=sessionStorage.getItem("carch");sessionStorage.removeItem("cfu");sessionStorage.removeItem("carch");if(k==="unread")sessionStorage.setItem("cfu","1");if(k==="arch"&&!was)sessionStorage.setItem("carch","1");chats();}
+    return;}
   const b=e.target.closest("#view [data-act]");if(!b)return;e.preventDefault();
   const k=b.dataset.act,n=NEWS[+b.closest(".ncard")?.dataset.ni];
   if(k==="menu"||k==="more"){const mm=b.parentNode.querySelector(".menu");mm.hidden=!mm.hidden;}
@@ -511,12 +520,17 @@ async function notifications(){
   };
   draw();
 }
+function fileHtml(name,ext,size,uri){
+  const e=String(ext||String(name||"").split(".").pop()||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,4);
+  const col={pdf:"#d8232a",doc:"#2b579a",docx:"#2b579a",xls:"#1d7044",xlsx:"#1d7044",csv:"#1d7044",ppt:"#d24726",pptx:"#d24726"}[e]||"#6b6b73";
+  return `<a href="#" class="fcard" data-dl="${esc(uri)}" data-name="${esc(name)}"><span class="ficon" style="background:${col}">${esc(e.toUpperCase()||"DATEI")}</span><span class="fmeta"><span class="fn">${esc(name)}</span><span class="fs">${size?fsize(size):""}<i class="fdl">${ic("dl")}</i></span></span></a>`;
+}
 function attHtml(list){
   return (list||[]).map(a=>{
     const u=a.meta?.temp_uri||a.meta?.uri||a.meta?.download_uri,d=a.meta?.download_uri||u;
     if(/^(jpe?g|png|gif|webp|bmp)$/i.test(a.extension||"")||a.file_type==="image")
       return `<img class="nimg" data-src="${esc(u)}" alt="${esc(a.name)}">`;
-    return `<div><a href="#" data-dl="${esc(d)}" data-name="${esc(a.name)}">${ic("clip")} ${esc(a.name)}</a></div>`;
+    return fileHtml(a.name,a.extension,a.size??a.meta?.size,d);
   }).join("");
 }
 function surveyHtml(s){
@@ -579,8 +593,8 @@ function drawTT(mon,upd){
   const per=[];[...cnt.values()].sort((x,y)=>y.n-x.n).forEach(o=>{if(!per.some(p=>o.s<p.e&&o.e>p.s))per.push(o);});
   per.sort((x,y)=>x.s-y.s);
   const gaps=per.map((p,i)=>per[i+1]&&per[i+1].s-p.e>=15?[p.e,per[i+1].s]:null).filter(Boolean);
-  const axis=per.map(p=>`<div class="pl" style="top:${(p.s-a)*P}px;height:${(p.e-p.s)*P}px"><small>${hm(p.s)}</small>${p.h?`<b>${p.h}</b>`:"<span></span>"}<small>${hm(p.e)}</small></div>`).join("")+
-    gaps.map(([s,e])=>`<div class="pl br" style="top:${(s-a)*P}px;height:${(e-s)*P}px">-</div>`).join("");
+  const axis=per.map(p=>`<div class="tpl" style="top:${(p.s-a)*P}px;height:${(p.e-p.s)*P}px"><small>${hm(p.s)}</small>${p.h?`<b>${p.h}</b>`:"<span></span>"}<small>${hm(p.e)}</small></div>`).join("")+
+    gaps.map(([s,e])=>`<div class="tpl br" style="top:${(s-a)*P}px;height:${(e-s)*P}px">-</div>`).join("");
   const gry=(s,e)=>`<div class="gry" style="top:${(s-a)*P}px;height:${(e-s)*P}px"></div>`;
   const col=x=>{
     const it=x.ls.slice().sort((p,q)=>p.s-q.s),out=[];let cl=[],end=0,lanes=[];
@@ -675,7 +689,7 @@ async function chats(){
     let l=(await api_.chats(1,q)).filter(c=>ar.includes(cid(c))===car);
     if(cfu)l=l.filter(c=>unreadOf(c)>0||mk.includes(cid(c)));
     l=l.map(c=>[c,pins.includes(cid(c))]).sort((a,b)=>b[1]-a[1]);
-    const fl=[["chat","unread",cfu?"Alle Chats anzeigen":"Nach Ungelesen filtern"],["archive","arch",car?"Archiv verlassen":"Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
+    const fl=[cfu||car?["chat","all","Alle Chats anzeigen"]:["chat","unread","Nach Ungelesen filtern"],["archive","arch",car?"Archiv verlassen":"Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
     V(hdr("Chats",`<button class="ib pl" data-act="newchat" aria-label="Neuer Chat">${ic("plus")}</button>`,"cinfo")+
       `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu||car?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
       (car?'<h3 style="margin:0 0 10px">Archivierte Gruppen</h3>':"")+
@@ -718,7 +732,7 @@ function msgHtml(x,mine){
   else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
-  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:`<div><a href="#" data-dl="${esc(m.download_uri||m.uri)}" data-name="${esc(f.name)}">${ic("clip")} ${esc(f.name)}</a></div>`;
+  if(f)b+=(m.has_image||f.file_type==="image"||/^(jpe?g|png|gif|webp)$/i.test(f.extension||""))?`<img class="nimg" data-src="${esc(m.content_uri||m.uri||m.thumbnail_uri)}" data-alt="${esc(m.thumbnail_uri||m.download_uri||"")}" alt="${esc(f.name)}">`:fileHtml(f.name,f.extension,f.size??m.size,m.download_uri||m.uri);
   const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
   return `<div class="msg ${mine?"me":""}">${mine?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`}${b}<div class="tm">${t}</div></div>`;
 }
