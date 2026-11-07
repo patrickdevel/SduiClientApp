@@ -90,6 +90,23 @@ h2{font-size:22px}
 .blk{font-size:9.5px;padding:3px 4px;border-left-width:3px}.blk b{font-size:11px}.gd b{font-size:16px}.tk{font-size:9px}
 .sh-box{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
 }
+.chead{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0}
+.ct{cursor:pointer;min-width:0}.ct b{display:block}.ct .mu{font-size:12px}
+.av{width:40px;height:40px;border-radius:50%;background:#ececf0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#555;flex:none}
+.av .ic{width:20px;height:20px}
+.ib{border:0;background:transparent;color:var(--ac);width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
+.ib .ic{width:22px;height:22px}.ib.pl{background:#fdecf2}
+.crow{display:flex;gap:12px;align-items:center;background:#fff;border-radius:18px;padding:12px;margin-bottom:8px;cursor:pointer;box-shadow:0 2px 10px rgba(20,20,40,.06)}
+.msg{border:1px solid #e1e1e6;box-shadow:none;border-radius:14px;padding:8px 12px;max-width:82%;margin-bottom:6px;word-break:break-word}
+.msg.me{background:#fdecf2;color:var(--tx);border-color:#f6d3df;margin-left:auto}
+.msg.me .shared{background:#fff;color:var(--tx);border-color:var(--ac)}
+.who{color:var(--ac);font-weight:600;font-size:13px}.tm{text-align:right;font-size:11px;color:var(--mu)}
+.dsep{text-align:center;margin:14px 0 8px}.dsep span{background:#e8e8ec;border-radius:8px;padding:3px 10px;font-size:12px;color:var(--mu)}
+.dsep.un span{background:#fdeede;color:#b45f06}
+.del{display:table;border:1px solid #d9d9df;border-radius:12px;padding:8px 12px;color:var(--mu);font-size:13px;background:#fff;margin-bottom:6px}.del.me{margin-left:auto}
+.cin{display:flex;gap:8px;align-items:center}.cin input:not([hidden]){flex:1;margin:0;border-radius:999px}
+.fchip{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:2px 4px 2px 12px;margin-bottom:6px;font-size:13px}.fchip span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.inchat #tabbar{display:none}body.inchat .cin{bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom))}body.inchat main{padding-bottom:12px}
 </style>
 </head>
 <body>
@@ -140,17 +157,22 @@ cap:'<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
 clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 group:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
 info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+cloud:'<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+x:'<path d="M18 6 6 18M6 6l12 12"/>',
 more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
 out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
 };
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
-const NAVIC={news:"news",timetable:"cal",chats:"chat",courses:"cap",profile:"user"};
+const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 async function api(path,{method="GET",params,body}={}){
   const u=new URL(path,BASE);
   if(params)Object.entries(params).forEach(([k,v])=>v!=null&&v!==""&&u.searchParams.set(k,v));
-  const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json","Content-Type":"application/json",...(token&&{Authorization:"Bearer "+token})},body:body?JSON.stringify(body):undefined});
+  const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json",...(body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token&&{Authorization:"Bearer "+token})},body:body?(body instanceof FormData?body:JSON.stringify(body)):undefined});
   if(r.status===401){logout();throw new Error("Sitzung abgelaufen");}
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||"Fehler "+r.status);
@@ -162,7 +184,9 @@ const api_ = {
   news:page=>api("users/self/feed/news",{params:{page}}),
   times:()=>api("timetables/times"),
   timetable:(a,b)=>api("timetables/users/self/timetable",{params:{begins_at:a,ends_at:b}}),
-  chats:(page,search)=>api("users/self/channels/chats",{params:{page,search,limit:15}}),
+  chats:(page,search,limit)=>api("users/self/channels/chats",{params:{page,search,limit:limit||15}}),
+  members:id=>api(`channels/${id}/users`,{params:{page:1,search:""}}),
+  files:(id,path,search)=>api(`channels/cloud/${id}/files`,{params:{path,search,limit:50,"order-by":"name","order-dir":"asc"}}),
   msgs:(id,page)=>api(`channels/chats/${id}/messages`,{params:{page}}),
   send:(id,content)=>api(`channels/chats/${id}/messages`,{method:"POST",body:{content}}),
   courses:()=>api("users/self/timetable/courses"),
@@ -172,7 +196,7 @@ const api_ = {
   vote:(id,vote)=>api(`channels/surveys/${id}/vote`,{method:"PUT",body:vote})
 };
 
-const pages={news:"News",timetable:"Stundenplan",chats:"Chats",courses:"Kurse",profile:"Profil"};
+const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil"};
 function buildNav(){
   $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();location.hash=a.dataset.p;};
@@ -183,8 +207,9 @@ function buildNav(){
 function route(){
   const p=(location.hash.slice(1)||"news").split("-")[0];
   document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["courses","profile"].includes(p))));
-  ({news,timetable,chats,courses,profile}[p]||news)();
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile"].includes(p))));
+  document.body.classList.remove("inchat");
+  ({news,timetable,chats,cloud,courses,profile}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
 
@@ -316,7 +341,7 @@ async function openSheet(l){
   }catch(_){$("#cb").innerHTML='<span class="mu">Klassenbuch nicht verfügbar.</span>';}
 }
 function openMore(){
-  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["courses","cap","Kurse"],["profile","user","Profil"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
+  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["cloud","cloud","Cloud"],["courses","cap","Kurse"],["profile","user","Profil"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
   $("#sheet").classList.add("open");
 }
 $("#sheet").onclick=e=>{
@@ -328,15 +353,16 @@ document.addEventListener("keydown",e=>e.key==="Escape"&&closeSheet());
 $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad");if(c)openSheet(ttL[+c.dataset.i]);});
 
 /* CHATS */
+const ini=n=>(String(n).match(/[A-Za-zÄÖÜäöü]{2}/)||["?"])[0].toUpperCase();
 async function chats(){
   load();
   const q=sessionStorage.getItem("cq")||"";
   try{
     const list=await api_.chats(1,q);
     V(`<h2>Chats</h2><input id="cs" placeholder="Suchen …" value="${esc(q)}">`+
-      list.map(c=>`<div class="card chat" data-c="${c.chat?.id||c.id}" data-p="${c.chat?.can?.["post-message"]===0?0:1}" data-n="${esc(c.meta?.displayname||c.code)}"><b>${esc(c.meta?.displayname||c.code)}</b> <span class="mu">${c.users_count||""} Teilnehmer</span><br><span class="mu">${esc(c.meta?.subtitle||"")}</span></div>`).join("")||'<p class="mu">Keine Chats.</p>');
+      (list.map(c=>{const n=c.meta?.displayname||c.code;return `<div class="crow chat" data-c="${c.chat?.id||c.id}" data-ch="${c.id}" data-p="${c.chat?.can?.["post-message"]===0?0:1}" data-n="${esc(n)}"><div class="av">${ini(n)}</div><div><b>${esc(n)}</b><div class="mu">${c.users_count||""} Teilnehmer</div></div></div>`;}).join("")||'<p class="mu">Keine Chats.</p>'));
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
-    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c,el.dataset.p==='1',el.dataset.n));
+    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch));
   }catch(e){fail(e);}
 }
 function newsCard(n){
@@ -346,26 +372,88 @@ function newsCard(n){
 }
 const HINTS={"news.posted":"hat eine News geteilt"};
 function msgHtml(x,mine){
-  const who=esc(x.user?.meta?.displayname||""),t=new Date(x.created_at).toLocaleString("de-DE");
+  if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
   let b="";
   if(x.target_type==="news"||x.content==="news.posted")b=newsCard(x.target);
   else if(x.type==="HINT"||/^[a-z_]+(\.[a-z_]+)+$/.test(x.content||""))b=`<i>${esc(HINTS[x.content]||x.content)}</i>`;
   else b=esc(x.content||"");
   const f=x.file,m=f?.meta||{};
   if(f)b+=m.has_image?`<img class="nimg" loading="lazy" src="${esc(m.content_uri||m.thumbnail_uri||m.uri)}">`:`<div><a href="${esc(m.download_uri||m.uri)}" target="_blank" rel="noopener">${ic("clip")} ${esc(f.name)}</a></div>`;
-  return `<div class="msg ${mine?"me":""}"><div class="mu" style="${mine?"color:#dfe7ff":""}">${who} · ${t}</div>${b}</div>`;
+  const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  return `<div class="msg ${mine?"me":""}">${mine?"":`<div class="who">${esc(x.user?.meta?.displayname||"")}</div>`}${b}<div class="tm">${t}</div></div>`;
 }
-async function openChat(id,canPost=true,name="Chat"){
+let CH=null;
+async function openChat(id,canPost=true,name="Chat",ch=null){
+  CH={id,canPost,name,ch:ch||id,msgs:[],page:1,file:null};
+  load();document.body.classList.add("inchat");
+  try{CH.msgs=await api_.msgs(id,1);drawChat(true);}catch(e){fail(e);}
+}
+function drawChat(scroll){
+  const m=CH.msgs.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  let last="",un=false,h="";
+  m.forEach(x=>{
+    const d=new Date(x.created_at),dl=d.toLocaleDateString("de-DE",{day:"2-digit",month:"long"}),mine=x.user?.id===me.id;
+    if(dl!==last){h+=`<div class="dsep"><span>${dl}</span></div>`;last=dl;}
+    if(!un&&x.is_read===false&&!mine){un=true;h+=`<div class="dsep un"><span>Ungelesene Nachrichten</span></div>`;}
+    h+=msgHtml(x,mine);
+  });
+  V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
+  <button class="btn ghost" id="older" style="display:block;margin:6px auto 10px">Ältere Nachrichten laden</button><div id="ms">${h}</div>
+  ${CH.canPost?`<div id="fchip"></div><div class="cin"><button class="ib pl" id="plus">${ic("plus")}</button><input type="file" id="fi" hidden><input id="mi" placeholder="Neue Nachricht"><button class="ib pl" id="sd">${ic("send")}</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`}`);
+  $("#bk").onclick=chats;
+  $("#older").onclick=async()=>{try{const o=await api_.msgs(CH.id,CH.page+1);if(!o.length){$("#older").remove();return;}CH.page++;const ids=new Set(CH.msgs.map(x=>x.uuid));CH.msgs=CH.msgs.concat(o.filter(x=>!ids.has(x.uuid)));drawChat(false);}catch(e){alert(e.message);}};
+  $("#ci").onclick=chatInfo;
+  document.querySelectorAll("[data-nid]").forEach(async el=>{try{el.outerHTML=newsCard(await api_.newsById(el.dataset.nid));}catch(_){el.outerHTML=newsCard(null);}});
+  if(CH.canPost){
+    const chip=()=>{$("#fchip").innerHTML=CH.file?`<div class="fchip">${ic("clip")} <span>${esc(CH.file.name)}</span><button class="ib" id="fx">${ic("x")}</button></div>`:"";if(CH.file)$("#fx").onclick=()=>{CH.file=null;chip();};};
+    $("#plus").onclick=()=>$("#fi").click();
+    $("#fi").onchange=e=>{CH.file=e.target.files[0]||null;chip();};chip();
+    const send=async()=>{
+      const v=$("#mi").value.trim();if(!v&&!CH.file)return;
+      try{
+        let body={content:v};
+        if(CH.file){body=new FormData();body.append("content",v);body.append("file",CH.file);}
+        await api(`channels/chats/${CH.id}/messages`,{method:"POST",body});
+        CH.file=null;CH.page=1;CH.msgs=await api_.msgs(CH.id,1);drawChat(true);
+      }catch(e){alert("Senden fehlgeschlagen: "+e.message);}
+    };
+    $("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();
+  }
+  if(scroll)window.scrollTo(0,document.body.scrollHeight);
+}
+async function chatInfo(){
+  $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><p class="mu">Lade Teilnehmer …</p>`;$("#sheet").classList.add("open");
+  try{
+    const r=await api_.members(CH.ch);
+    $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="mu">${r.length} Teilnehmer (erste Seite)</div>`+r.map(u=>{const n=u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||""} ${u.lastname||""}`.trim()||"Unbekannt";return `<div class="srow" style="align-items:center"><div class="av" style="width:34px;height:34px;font-size:13px">${ini(n)}</div><div>${esc(n)}<div class="mu">${esc(u.meta?.subtitle||u.type||"")}</div></div></div>`;}).join("");
+  }catch(e){$("#sh-c").innerHTML=`<h3>${esc(CH.name)}</h3><p class="err">${esc(e.message)}</p>`;}
+}
+
+/* CLOUD */
+let cl={id:null,name:"",path:"",stack:[]};
+const fsize=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+async function cloud(){
   load();
   try{
-    const m=(await api_.msgs(id,1)).slice().reverse();
-    V(`<button class="btn ghost" id="bk">${ic("left")} Chats</button><h2>${esc(name)}</h2><div id="ms">`+m.map(x=>{
-      return msgHtml(x,x.user?.id===me.id);
-    }).join("")+`</div>`+(canPost?`<div class="row cin"><input id="mi" style="flex:1;margin:0" placeholder="Nachricht …"><button class="btn" id="sd">${ic("send")} Senden</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`));
-    $("#bk").onclick=chats;
-    document.querySelectorAll("[data-nid]").forEach(async el=>{try{el.outerHTML=newsCard(await api_.newsById(el.dataset.nid));}catch(_){el.outerHTML=newsCard(null);}});
-    const send=async()=>{const v=$("#mi").value.trim();if(!v)return;try{await api_.send(id,v);openChat(id,canPost,name);}catch(e){alert(e.message);}};
-    if(canPost){$("#sd").onclick=send;$("#mi").onkeydown=e=>e.key==="Enter"&&send();}
+    if(!cl.id){
+      const list=(await api_.chats(1,"",50)).filter(c=>c.cloud?.id||c.cloud_id);
+      V(`<h2>Cloud</h2><p class="mu">Wähle den Kanal, dessen Dateien du sehen willst.</p>`+(list.map(c=>{const n=c.meta?.displayname||c.code;return `<div class="crow" data-cl="${c.cloud?.id||c.cloud_id}" data-n="${esc(n)}"><div class="av">${ic("cloud")}</div><div><b>${esc(n)}</b></div></div>`;}).join("")||'<p class="mu">Keine Clouds gefunden.</p>'));
+      document.querySelectorAll("[data-cl]").forEach(el=>el.onclick=()=>{cl={id:el.dataset.cl,name:el.dataset.n,path:"",stack:[]};cloud();});
+      return;
+    }
+    const q=sessionStorage.getItem("fq")||"";
+    const fl=await api_.files(cl.id,cl.path||undefined,q||undefined);
+    V(`<div class="row"><button class="ib" id="cb_">${ic("left")}</button><h2 style="margin:0">${esc(cl.name)}</h2></div><div class="mu" style="margin:4px 0 10px">/${esc(cl.path)}</div><input id="fs" placeholder="Dateien suchen …" value="${esc(q)}">`+
+      (fl.map((f,i)=>{const m=f.meta||{},dir=f.file_type==="folder"||f.type==="folder"||f.type==="directory";
+        const th=m.has_image&&(m.thumbnail_uri||m.content_uri);
+        return `<div class="crow" data-f="${i}"><div class="av" style="border-radius:12px;overflow:hidden">${th?`<img src="${esc(th)}" style="width:100%;height:100%;object-fit:cover">`:ic(dir?"folder":"file")}</div><div style="min-width:0"><b style="word-break:break-word">${esc(f.name)}</b><div class="mu">${dir?"Ordner":fsize(f.size||0)} · ${new Date(f.updated_at).toLocaleDateString("de-DE")}</div></div></div>`;}).join("")||'<p class="mu">Keine Dateien.</p>'));
+    $("#cb_").onclick=()=>{if(cl.stack.length){cl.path=cl.stack.pop();}else cl.id=null;cloud();};
+    $("#fs").onchange=e=>{sessionStorage.setItem("fq",e.target.value);cloud();};
+    document.querySelectorAll("[data-f]").forEach(el=>el.onclick=()=>{
+      const f=fl[+el.dataset.f],m=f.meta||{};
+      if(f.file_type==="folder"||f.type==="folder"||f.type==="directory"){cl.stack.push(cl.path);cl.path=m.absolute_path||f.path||f.name;cloud();}
+      else window.open(m.download_uri||m.uri||m.content_uri,"_blank","noopener");
+    });
   }catch(e){fail(e);}
 }
 
