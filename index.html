@@ -599,7 +599,7 @@ async function authBlob(u){
     :[()=>fetch(url.href),()=>PROXY?fetch(PROXY+encodeURIComponent(url.href)):Promise.reject()];
   let last=null;
   for(const t of tries){try{const r=await t();if(r.ok){const b=await r.blob();if(!/json/.test(b.type))return b;}else last=new Error("HTTP "+r.status);}catch(e){last=e||last;}}
-  throw last||new Error("Download fehlgeschlagen");
+  throw new Error(((last&&last.message)||"Download fehlgeschlagen")+" ("+url.hostname+")");
 }
 let pdfLib=null;
 function loadPdfJs(){
