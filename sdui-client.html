@@ -153,6 +153,23 @@ body{background:#f6f6f8}
 .pwr{position:relative}.pwr input{padding-right:50px}.pwr .ib{position:absolute;right:4px;top:calc(50% + 1px);transform:translateY(-50%);color:var(--mu)}
 .tab.on .ic{fill:color-mix(in srgb,var(--ac) 20%,transparent)}
 nav a:hover:not(.on){background:#f3f3f6}
+.ph.sticky{position:sticky;top:0;z-index:20;background:var(--bg);padding:6px 0;margin-bottom:8px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.ph.sticky h2{margin:0}.ph.sticky.hide{transform:translateY(-110%)}
+.mm{top:42px;min-width:240px}.mm .mi{padding:16px 18px}
+@media(prefers-reduced-motion:reduce){.ph.sticky{transition:none}}
+.clist{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(20,20,40,.08)}
+.cr2{display:flex;gap:12px;padding:12px;border-top:1px solid var(--bd);cursor:pointer;align-items:flex-start}.cr2:first-child{border-top:0}
+.av2{position:relative;width:56px;height:56px;border-radius:50%;background:#ececef;display:flex;align-items:center;justify-content:center;font-size:20px;color:#666;flex:none}
+.av2.grp{background:#d9d9de}.av2 .ic{width:34px;height:34px;fill:#6a6a70;stroke:#6a6a70}
+.av2 .bdg2{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff}
+.bdg2.g{background:#1fa24a;border-radius:7px}.bdg2.k{background:#111;border-radius:50%}.av2 .bdg2 .ic{width:12px;height:12px;fill:none;stroke:#fff}
+.cm{min-width:0;flex:1}.cn{font-size:16px;line-height:1.3}.cn.un{font-weight:600}.cn .ic{width:14px;height:14px;color:var(--ac)}
+.s{font-size:12.5px;color:#333;margin-top:2px}.s2{font-size:12.5px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px;color:var(--mu);flex:none}
+.ib.sm{width:32px;height:32px;color:#555}.ib.sm .ic{width:18px;height:18px}
+.ib.gr.act{color:var(--ac)}.ib.gr.act .ic{fill:var(--ac)}
+.warn{background:#fdebe3;color:#b4441b;border-radius:10px;padding:14px;font-size:13px;margin:16px 0}
+.av3{width:36px;height:36px;border-radius:50%;background:#dcf0fa;color:#1d6f99;display:flex;align-items:center;justify-content:center;flex:none}.av3 .ic{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -209,6 +226,11 @@ file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><pat
 x:'<path d="M18 6 6 18M6 6l12 12"/>',
 eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
 eyeoff:'<path d="M9.9 4.2A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/>',
+down:'<path d="m6 9 6 6 6-6"/>',
+filter:'<path d="M22 3H2l8 9.46V19l4 2v-8.54z"/>',
+bellx:'<path d="M13.7 21a2 2 0 0 1-3.4 0M18.6 14.6A9 9 0 0 0 18 8a6 6 0 0 0-9.3-5M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14M2 2l20 20"/>',
+archive:'<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
 menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
 search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
 more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
@@ -286,6 +308,8 @@ function route(){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile"].includes(p))));
   document.body.classList.remove("inchat");
   if(me)updateBadge();
+  if(p==="chats"&&location.hash==="#chats-new")return newChat();
+  if(p==="news"&&location.hash.length>6)return newsDetail(location.hash.slice(6));
   ({news,timetable,chats,cloud,courses,profile,notifications}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
@@ -318,7 +342,7 @@ function newsItem(n,i,o={}){
   const A=k=>o.live?` data-act="${k}"`:"",ti=o.title??n.title;
   return `<div class="card ncard" data-ni="${i}">${n.is_pinned?`<div class="pinl">${ic("pin")} Vom Autor fixiert <a href="#"${A("pin")}>Was heißt das?</a></div>`:""}
   <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
-  <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><button class="ib"${A("more")} aria-label="Text kopieren">${ic("more")}</button></div></div>
+  <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
   <div class="mu">${D2(n.publish_at||n.created_at)}</div>
   ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${n.survey?surveyHtml(n.survey):""}</div>`;
 }
@@ -327,28 +351,57 @@ async function news(){
   try{
     NEWS=await api_.news(npage);
     const mi=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
-    V(`<div class="ph"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
-      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
-      <label class="sbox">${ic("search")}<input id="ns" placeholder="News suchen" autocomplete="off"></label>`+
+    V(`<div class="ph sticky"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
+      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`+
       NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")+(NEWS.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
     $("#np").onclick=()=>{npage--;news();scrollTo(0,0);};$("#nn").onclick=()=>{npage++;news();scrollTo(0,0);};
-    $("#ns").oninput=e=>{const q=e.target.value.toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
     api_.activity().then(a=>{if(a.notification?.unread_count){const b=$("#bellb");if(b)b.hidden=false;}}).catch(()=>{});
   }catch(e){fail(e);}
 }
 document.addEventListener("click",e=>{
-  const m=$("#menu");if(m&&!e.target.closest("[data-act=menu]"))m.hidden=true;
+  const own=e.target.closest(".mw");
+  document.querySelectorAll(".menu").forEach(x=>{if(x.parentNode!==own)x.hidden=true;});
   const g=e.target.closest("[data-mg]");if(g){g.dataset.mg==="out"?logout():go(g.dataset.mg);return;}
+  const nm=e.target.closest("[data-nm]");
+  if(nm){
+    const n=NEWS[+nm.closest(".ncard").dataset.ni];nm.closest(".menu").hidden=true;if(!n)return;
+    const id=n.id??n.uuid;
+    if(nm.dataset.nm==="detail")location.hash="news-"+id;
+    else{const u=location.origin+location.pathname+"#news-"+id;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>alert("Link kopiert")).catch(()=>prompt("Link kopieren:",u));}
+    return;
+  }
+  const cm=e.target.closest("[data-cm]");
+  if(cm){cm.closest(".menu").hidden=true;chatAct(cm.dataset.cm,cm.closest(".chat").dataset.c);return;}
+  const cf=e.target.closest("[data-cf]");
+  if(cf){cf.closest(".menu").hidden=true;if(cf.dataset.cf==="unread"){sessionStorage.setItem("cfu",sessionStorage.getItem("cfu")?"":"1");chats();}else alert("Diese Ansicht ist noch nicht eingebaut.");return;}
   const b=e.target.closest("#view [data-act]");if(!b)return;e.preventDefault();
   const k=b.dataset.act,n=NEWS[+b.closest(".ncard")?.dataset.ni];
-  if(k==="menu")m.hidden=!m.hidden;
+  if(k==="menu"||k==="more"){const mm=b.parentNode.querySelector(".menu");mm.hidden=!mm.hidden;}
   else if(k==="bell")go("notifications");
   else if(k==="info")infoModal();
+  else if(k==="cinfo")modal("Chats","<p>Hier findest du deine Chats mit Lehrkräften, Klassen und Gruppen. In Einweg-Chats (Schloss) können nur Admins schreiben.</p>",`<div class="mf"><button class="btn" data-x style="width:100%">Okay, zurück</button></div>`);
+  else if(k==="newchat")location.hash="chats-new";
   else if(k==="pin")modal("Fixierte News",'<p>Eine fixierte News bleibt oben in der Liste, bis der Autor sie wieder löst.</p>');
   else if(k==="tr"&&n)trModal(n);
-  else if(k==="more"&&n)navigator.clipboard?.writeText(n.content||n.title||"").then(()=>alert("Text kopiert"));
 });
+/* Header beim Runterscrollen ausblenden, beim Hochscrollen wieder einblenden */
+let ly=0;
+addEventListener("scroll",()=>{
+  const h=document.querySelector(".ph.sticky");if(!h)return;
+  const y=Math.max(0,scrollY);if(Math.abs(y-ly)<6)return;
+  const hide=y>ly&&y>70;h.classList.toggle("hide",hide);
+  if(hide)document.querySelectorAll(".menu").forEach(x=>x.hidden=true);
+  ly=y;
+},{passive:true});
+async function newsDetail(id){
+  load();
+  try{
+    const n=await api_.newsById(id);NEWS=[n];
+    V(`<div class="ph sticky" style="justify-content:flex-start;gap:8px"><button class="ib gr" id="db" aria-label="Zurück">${ic("left")}</button><h2>News</h2></div>`+newsItem(n,0,{live:1}));
+    $("#db").onclick=()=>go("news");
+  }catch(e){fail(e);}
+}
 
 /* Modal */
 function modal(t,h,foot){
@@ -522,16 +575,63 @@ $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad")
 
 /* CHATS */
 const ini=n=>(String(n).match(/[A-Za-zÄÖÜäöü]{2}/)||["?"])[0].toUpperCase();
+const MENU=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
+const hdr=(t,extra,info)=>`<div class="ph sticky"><div class="row" style="gap:10px;flex-wrap:nowrap"><h2>${t}</h2>${extra||""}</div><div class="row" style="gap:0;flex-wrap:nowrap"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}</button><button class="ib gr" data-act="${info}" aria-label="Info">${ic("info")}</button><div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${MENU.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+const unreadOf=c=>c.chat?.unread_count??c.unread_count??0;
+function ctime(t){
+  if(!t)return"";const d=new Date(t),n=new Date(),dd=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
+  if(dd<=0)return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  if(dd===1)return"Gestern";if(dd<7)return d.toLocaleDateString("de-DE",{weekday:"long"});
+  return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"});
+}
+function cav(n,locked){
+  const m=String(n).match(/^\d{2}\/\d{2}\s+([A-Za-zÄÖÜäöü]{2})/);
+  return `<div class="av2${m?"":" grp"}">${m?m[1].toUpperCase():ic("group")}<span class="bdg2 ${locked?"k":"g"}">${ic(locked?"lock":"chat")}</span></div>`;
+}
+function chatRow(c,pinned){
+  const n=c.meta?.displayname||c.code,id=c.chat?.id||c.id,post=c.chat?.can?.["post-message"]===0?0:1;
+  const lm=c.chat?.last_message||c.last_message||{},who=lm.user?.meta?.displayname||"";
+  const txt=lm.content==="news.posted"?`${who} hat eine News mit dieser Gruppe geteilt.`:(lm.content||""),un=unreadOf(c);
+  const items=[["chat","unread","Ungelesen markieren"],["pin","pin",pinned?"Fixierung lösen":"Diesen Chat fixieren"],["bellx","mute","Benachrichtigungen deaktivieren"],["folder","arch","Chat archivieren"]];
+  return `<div class="cr2 chat" data-c="${esc(id)}" data-ch="${esc(c.id)}" data-p="${post}" data-n="${esc(n)}">${cav(n,!post)}
+  <div class="cm"><div class="cn${un?" un":""}">${pinned?ic("pin")+" ":""}${esc(n)}</div><div class="s">${esc(who||(c.users_count?c.users_count+" Teilnehmer":""))}</div><div class="s2">${esc(txt)}</div></div>
+  <div class="cr"><span>${ctime(lm.created_at||c.updated_at)}</span>${un?`<i class="bd" style="position:static">${un}</i>`:""}<div class="mw"><button class="ib sm" data-act="more" aria-label="Optionen">${ic("down")}</button><div class="menu mm" hidden>${items.map(([i,k,t])=>`<div class="mi" data-cm="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+}
+function chatAct(k,id){
+  if(k==="pin"){const p=JSON.parse(localStorage.getItem("sdui_pins")||"[]"),i=p.indexOf(String(id));i<0?p.push(String(id)):p.splice(i,1);localStorage.setItem("sdui_pins",JSON.stringify(p));chats();}
+  else alert("Diese Aktion ist noch nicht eingebaut.");
+}
 async function chats(){
   load();
-  const q=sessionStorage.getItem("cq")||"";
+  const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),pins=JSON.parse(localStorage.getItem("sdui_pins")||"[]");
   try{
-    const list=await api_.chats(1,q);
-    V(`<h2>Chats</h2><input id="cs" placeholder="Suchen …" value="${esc(q)}">`+
-      (list.map(c=>{const n=c.meta?.displayname||c.code;return `<div class="crow chat" data-c="${c.chat?.id||c.id}" data-ch="${c.id}" data-p="${c.chat?.can?.["post-message"]===0?0:1}" data-n="${esc(n)}"><div class="av">${ini(n)}</div><div><b>${esc(n)}</b><div class="mu">${c.users_count||""} Teilnehmer</div></div></div>`;}).join("")||'<p class="mu">Keine Chats.</p>'));
+    let l=await api_.chats(1,q);
+    if(cfu)l=l.filter(c=>unreadOf(c)>0);
+    l=l.map(c=>[c,pins.includes(String(c.chat?.id||c.id))]).sort((a,b)=>b[1]-a[1]);
+    const fl=[["chat","unread",cfu?"Alle Chats anzeigen":"Nach Ungelesen filtern"],["archive","arch","Archivierte Gruppen"],["clock","soon","Noch nicht aktiv"]];
+    V(hdr("Chats",`<button class="ib pl" data-act="newchat" aria-label="Neuer Chat">${ic("plus")}</button>`,"cinfo")+
+      `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
+      (l.length?`<div class="clist">${l.map(([c,p])=>chatRow(c,p)).join("")}</div>`:'<p class="mu">Keine Chats.</p>'));
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
-    document.querySelectorAll(".chat").forEach(el=>el.onclick=()=>openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch));
+    document.querySelectorAll(".chat").forEach(el=>el.onclick=e=>{if(e.target.closest(".mw"))return;openChat(el.dataset.c,el.dataset.p==="1",el.dataset.n,el.dataset.ch);});
   }catch(e){fail(e);}
+}
+/* Neuer Chat (Endpunkt "users" ist geraten, Chat anlegen noch nicht eingebaut) */
+async function newChat(){
+  V(`<div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
+    <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div>
+    <label class="sbox" style="margin:0 0 18px">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label><div id="ul"></div>`);
+  $("#nb").onclick=()=>go("chats");
+  const fill=async q=>{
+    $("#ul").innerHTML='<p class="mu">Lade …</p>';
+    try{
+      const r=await api("users",{params:{search:q,page:1}}),u=Array.isArray(r)?r:[];
+      $("#ul").innerHTML=u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(x.id)}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(x.meta?.displayname||(x.firstname+" "+x.lastname).trim())}</div><div class="s2">${esc(x.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:'<p class="mu">Keine Treffer.</p>';
+    }catch(e){$("#ul").innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+  };
+  $("#us").onchange=e=>fill(e.target.value.trim());
+  $("#ul").onclick=e=>{if(e.target.closest("[data-u]"))alert("Chat anlegen ist noch nicht eingebaut.");};
+  fill("");
 }
 function newsCard(n){
   if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
