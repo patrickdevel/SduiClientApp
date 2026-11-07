@@ -54,6 +54,8 @@ main{margin-left:200px;padding:20px;max-width:900px}
 
 <script>
 const BASE="https://api.sdui.app/v1/";
+// Auf Vercel/Webserver läuft alles über den Proxy /api/sdui (wegen CORS), lokal als Datei direkt.
+const PROXY=location.protocol==="file:"?"":"/api/sdui?u=";
 let token=localStorage.getItem("sdui_token")||"";
 let me=null;
 const $=s=>document.querySelector(s);
@@ -62,7 +64,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 async function api(path,{method="GET",params,body}={}){
   const u=new URL(path,BASE);
   if(params)Object.entries(params).forEach(([k,v])=>v!=null&&v!==""&&u.searchParams.set(k,v));
-  const r=await fetch(u,{method,headers:{"Accept":"application/json","Content-Type":"application/json",...(token&&{Authorization:"Bearer "+token})},body:body?JSON.stringify(body):undefined});
+  const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json","Content-Type":"application/json",...(token&&{Authorization:"Bearer "+token})},body:body?JSON.stringify(body):undefined});
   if(r.status===401){logout();throw new Error("Sitzung abgelaufen");}
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||"Fehler "+r.status);
