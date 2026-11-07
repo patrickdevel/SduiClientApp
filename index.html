@@ -243,17 +243,25 @@ body.inchat::before{display:none}
 .nimg.blr{filter:blur(18px);transform:scale(1.08)}
 .nimg.lk{width:100%;height:100%;max-height:none;object-fit:cover}
 .ildw .spin.s.ils{position:absolute;display:block;left:50%;top:50%;right:auto;bottom:auto;margin:-14px 0 0 -14px;width:28px;height:28px;border-width:3px;border-color:rgba(255,255,255,.65);border-top-color:var(--ac);z-index:2}
-/* PDF-Ansicht */
-#pv{position:fixed;inset:0;z-index:75;background:var(--bg);display:flex;flex-direction:column;opacity:0;transform:translateY(24px);transition:opacity .22s ease,transform .26s cubic-bezier(.2,.8,.2,1)}
+/* PDF-Ansicht (Sdui-Look: Seiten als Karten, schwebende Pills, Blur-Fades) */
+#pv{position:fixed;inset:0;z-index:75;background:var(--bg);opacity:0;transform:translateY(24px);transition:opacity .22s ease,transform .26s cubic-bezier(.2,.8,.2,1)}
 #pv.open{opacity:1;transform:none}#pv.out{opacity:0;transform:translateY(24px)}
-.pvt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;flex:none}
+.pvb{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(72px + env(safe-area-inset-top,0px)) 12px calc(84px + env(safe-area-inset-bottom,0px))}
+.pvl{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.pvp{position:relative;width:100%;background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(20,20,40,.08);overflow:hidden}
+.pvp canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .35s ease}.pvp.rd canvas{opacity:1}
+.pvb.fb{padding:0}.pvb.fb .pvl{max-width:none;height:100%}.pvb.fb iframe{width:100%;height:100%;border:0;background:#fff}
+.pvt{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;pointer-events:none}
+.pvt::before{content:"";position:absolute;left:0;right:0;top:0;bottom:-20px;z-index:-1;background:rgba(246,246,248,.78);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);-webkit-mask-image:linear-gradient(to top,transparent 0,#000 70%);mask-image:linear-gradient(to top,transparent 0,#000 70%)}
+.pvt>*{pointer-events:auto}
 .pvn{display:flex;align-items:center;gap:4px;min-width:0;background:#fff;border-radius:999px;box-shadow:0 2px 12px rgba(20,20,40,.12);padding:3px 18px 3px 3px;height:46px}
 .pvn span{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pvx{border:0;background:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx);flex:none}.pvx .ic{width:22px;height:22px}
 .pvd{display:flex;align-items:center;gap:8px;flex:none;border:0;background:#d8232a;color:#fff;border-radius:999px;height:46px;padding:0 20px;font:inherit;font-weight:600;cursor:pointer;box-shadow:0 2px 12px rgba(216,35,42,.35)}.pvd .ic{width:20px;height:20px;stroke:#fff}
-.pvb{position:relative;flex:1;min-height:0;margin:0 12px calc(12px + env(safe-area-inset-bottom,0px));border-radius:18px;overflow:hidden;background:#e4e4e9;box-shadow:0 2px 12px rgba(20,20,40,.08)}
-.pvb iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
-.pvb .spin.s.pvs{position:absolute;display:block;left:50%;top:50%;margin:-14px 0 0 -14px;width:28px;height:28px;border-width:3px;border-color:rgba(255,255,255,.65);border-top-color:#d8232a}
+#pv::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(env(safe-area-inset-bottom,0px) + 90px);z-index:2;pointer-events:none;background:rgba(246,246,248,.78);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 70%);mask-image:linear-gradient(to bottom,transparent 0,#000 70%)}
+#pv:has(.pvb.fb)::after{display:none}
+.pvi{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:4;background:#fff;border-radius:999px;box-shadow:0 2px 12px rgba(20,20,40,.14);padding:9px 20px;font-size:14px;font-weight:500;line-height:1.2;pointer-events:none}.pvi[hidden]{display:none}
+#pv .spin.s.pvs{position:absolute;display:block;left:50%;top:50%;margin:-14px 0 0 -14px;width:28px;height:28px;border-width:3px;border-color:rgba(0,0,0,.08);border-top-color:#d8232a}
 @media(max-width:420px){.pvd span{display:none}.pvd{padding:0 14px}}
 .clist{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(20,20,40,.08)}
 .cr2{display:flex;gap:12px;padding:12px;border-top:1px solid var(--bd);cursor:pointer;align-items:flex-start}.cr2:first-child{border-top:0}
@@ -582,30 +590,85 @@ function hydrate(){
 }
 const isPdf=(n,e)=>/^pdf$/i.test(String(e||"").trim())||/\.pdf$/i.test(String(n||""));
 document.addEventListener("click",e=>{const a=e.target.closest("a[data-dl]");if(a){e.preventDefault();if(a.dataset.pdf)openPdf(a.dataset.dl,a.dataset.name);else dlFile(a.dataset.dl,a.dataset.name);}});
-/* PDF-Ansicht in der App mit rotem Download-Button */
+/* PDF-Ansicht in der App (Seiten als Karten im Sdui-Look) mit rotem Download-Button */
 let PV=null;
+const PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+async function authBlob(u){
+  const url=new URL(u,BASE),api=url.hostname==="api.sdui.app";
+  const tries=api?[()=>fetch(PROXY?PROXY+encodeURIComponent(url.href):url.href,{headers:{Authorization:"Bearer "+token}})]
+    :[()=>fetch(url.href),()=>PROXY?fetch(PROXY+encodeURIComponent(url.href)):Promise.reject()];
+  let last=null;
+  for(const t of tries){try{const r=await t();if(r.ok){const b=await r.blob();if(!/json/.test(b.type))return b;}else last=new Error("HTTP "+r.status);}catch(e){last=e||last;}}
+  throw last||new Error("Download fehlgeschlagen");
+}
+let pdfLib=null;
+function loadPdfJs(){
+  if(pdfLib)return pdfLib;
+  return pdfLib=new Promise((res,rej)=>{
+    const sc=document.createElement("script");sc.src=PDFJS+"pdf.min.js";
+    sc.onload=async()=>{
+      try{const t=await (await fetch(PDFJS+"pdf.worker.min.js")).text();
+        pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:"text/javascript"}));}
+      catch(_){pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js";}
+      res(window.pdfjsLib);
+    };
+    sc.onerror=()=>{pdfLib=null;rej(new Error("PDF-Bibliothek nicht erreichbar"));};
+    document.head.appendChild(sc);
+  });
+}
 async function openPdf(uri,name){
   closePdf(true);
   const el=document.createElement("div");el.id="pv";
-  el.innerHTML=`<div class="pvt"><div class="pvn"><button class="pvx" data-pv="x" aria-label="Schließen">${ic("x")}</button><span>${esc(name||"PDF")}</span></div><button class="pvd" data-pv="dl">${ic("dl")}<span>Herunterladen</span></button></div><div class="pvb"><span class="spin s pvs"></span></div>`;
+  el.innerHTML=`<div class="pvb"><div class="pvl"></div></div><div class="pvt"><div class="pvn"><button class="pvx" data-pv="x" aria-label="Schließen">${ic("x")}</button><span>${esc(name||"PDF")}</span></div><button class="pvd" data-pv="dl">${ic("dl")}<span>Herunterladen</span></button></div><div class="pvi" hidden></div><span class="spin s pvs"></span>`;
   document.body.appendChild(el);document.body.style.overflow="hidden";
-  PV={el,url:null};
+  PV={el,url:null,doc:null,io:null};
   requestAnimationFrame(()=>el.classList.add("open"));
   el.onclick=ev=>{const b=ev.target.closest("[data-pv]");if(!b)return;if(b.dataset.pv==="x")closePdf();else dlFile(uri,name);};
+  const me=PV,list=el.querySelector(".pvl"),box=el.querySelector(".pvb"),ind=el.querySelector(".pvi");
+  const stop=()=>{const sp=el.querySelector(".pvs");if(sp)sp.remove();};
   try{
-    const h=await authSrc(uri);
-    const bl=await (await fetch(h)).blob();
-    if(!PV||PV.el!==el)return;
-    const u=URL.createObjectURL(new Blob([bl],{type:"application/pdf"}));PV.url=u;
-    const fr=document.createElement("iframe");fr.title=name||"PDF";fr.src=u+"#view=FitH";
-    const body=el.querySelector(".pvb");fr.onload=()=>{const sp=body.querySelector(".pvs");if(sp)sp.remove();};
-    body.appendChild(fr);
+    const bl=await authBlob(uri);if(PV!==me)return;
+    const pdf=new Blob([bl],{type:"application/pdf"});
+    const url=me.url=URL.createObjectURL(pdf);
+    try{
+      const lib=await loadPdfJs();if(PV!==me)return;
+      const doc=me.doc=await lib.getDocument({data:await pdf.arrayBuffer()}).promise;if(PV!==me)return;
+      const n=doc.numPages,p1=await doc.getPage(1),v1=p1.getViewport({scale:1});
+      const pages=[];
+      for(let k=1;k<=n;k++){
+        const d=document.createElement("div");d.className="pvp";d.dataset.k=k;d.style.aspectRatio=v1.width+"/"+v1.height;
+        list.appendChild(d);pages.push(d);
+      }
+      stop();
+      if(n>1){ind.hidden=false;ind.textContent="1 / "+n;}
+      const render=async d=>{
+        if(d.dataset.r)return;d.dataset.r=1;
+        const pg=await doc.getPage(+d.dataset.k);if(PV!==me)return;
+        const w=d.clientWidth||list.clientWidth,base=pg.getViewport({scale:1}),sc=w/base.width,dpr=Math.min(devicePixelRatio||1,2.5);
+        const vp=pg.getViewport({scale:sc*dpr}),c=document.createElement("canvas");
+        c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+        d.style.aspectRatio=base.width+"/"+base.height;
+        await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;if(PV!==me)return;
+        d.appendChild(c);d.classList.add("rd");
+      };
+      const vis=new Map();
+      const io=me.io=new IntersectionObserver(es=>{
+        es.forEach(e=>{if(e.isIntersecting){render(e.target);vis.set(e.target,e.intersectionRatio);}else vis.delete(e.target);});
+        if(n>1&&vis.size){let best=null,r=-1;vis.forEach((v,t)=>{if(v>r||(v===r&&+t.dataset.k<+best.dataset.k)){r=v;best=t;}});if(best)ind.textContent=best.dataset.k+" / "+n;}
+      },{root:box,rootMargin:"600px 0px",threshold:[0,.25,.5,.75,1]});
+      pages.forEach(d=>io.observe(d));
+    }catch(libErr){
+      /* Fallback: Browser-eigener Anzeiger */
+      if(PV!==me)return;
+      list.innerHTML="";const fr=document.createElement("iframe");fr.title=name||"PDF";fr.src=url+"#view=FitH";
+      fr.onload=stop;list.appendChild(fr);box.classList.add("fb");
+    }
   }catch(err){
-    const body=el.querySelector(".pvb");if(body)body.innerHTML=`<div class="warn" style="margin:24px">PDF konnte nicht angezeigt werden. Du kannst sie oben herunterladen.</div>`;
+    stop();list.innerHTML=`<div class="warn" style="margin:0">PDF konnte nicht angezeigt werden. Du kannst sie oben herunterladen.<br><small>${esc(err&&err.message||"")}</small></div>`;
   }
 }
 function closePdf(now){
-  if(!PV)return;const {el,url}=PV;PV=null;
+  if(!PV)return;const {el,url,io,doc}=PV;PV=null;if(io)io.disconnect();if(doc)try{doc.destroy();}catch(_){}
   const rm=()=>{el.remove();if(url)URL.revokeObjectURL(url);if(!document.querySelector("#lb.open"))document.body.style.overflow="";};
   if(now){rm();return;}
   el.classList.remove("open");el.classList.add("out");setTimeout(rm,220);
