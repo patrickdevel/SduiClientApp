@@ -1140,6 +1140,8 @@ const uId=u=>u.id??u.user?.id??u.uuid;
 const NCEP=["users/self/chat-contacts","channels/chats/users","users/self/contacts"];
 const isStu=x=>/schüler/i.test(x.meta?.subtitle||x.user?.meta?.subtitle||"")||/student/i.test(x.type||x.user?.type||"");
 async function mapLimit(arr,n,fn){let i=0;await Promise.all(Array.from({length:Math.min(n,arr.length)},async()=>{while(i<arr.length){const k=i++;await fn(arr[k]);}}));}
+/* Verschiedene Paging-Stile: Sdui-Endpunkte unterscheiden sich; es wird der erste genommen, der neue Einträge liefert */
+const STY=[(p)=>({search:"",page:p,limit:50}),(p)=>({search:"",page:p}),(p,o)=>({search:"",offset:o,limit:50}),(p,o)=>({search:"",skip:o,limit:50}),(p)=>({search:"",page:p,per_page:50})];
 let NCST=null; // Zustand bleibt erhalten: erneutes Öffnen ist sofort da und lädt beim Scrollen weiter
 /* Lädt die nächste Seite Kontakte; liefert nur neue Einträge. Setzt st.done, wenn nichts mehr kommt. */
 async function contactsMore(st){
@@ -1147,10 +1149,15 @@ async function contactsMore(st){
   st.page++;
   let r=null;
   if(st.src==null){
-    for(const t of NCEP){try{const x=await api(t,{params:{search:"",page:1}});if(Array.isArray(x)&&x.length){st.src=t;r=x;break;}}catch(_){}}
+    for(const t of NCEP){
+      for(let si=0;si<2&&st.src==null;si++){
+        try{const x=await api(t,{params:STY[si](1,0)});if(Array.isArray(x)&&x.length){st.src=t;st.si=si;r=x;}}catch(_){}
+      }
+      if(st.src!=null)break;
+    }
     if(st.src==null)st.src="chats";
   }
-  const fresh=[],add=u=>{const k=uId(u);if(k==null||k===me.id||st.seen.has(k))return false;st.seen.add(k);if(!isStu(u))fresh.push(u);return true;};
+  const fresh=[],add=u=>{const k=uId(u);if(k==null||st.seen.has(k))return false;st.seen.add(k);if(k!==me.id&&!isStu(u))fresh.push(u);return true;};
   if(st.src==="chats"){
     // Fallback: Mitglieder deiner Chats, pro Seite 50 Chats, höchstens 5 parallel
     const cs=await api_.chats(st.page,"",50);
@@ -1166,11 +1173,17 @@ async function contactsMore(st){
     fresh.sort((x,y)=>uName(x).localeCompare(uName(y),"de"));
     return fresh;
   }
-  if(r==null){r=await api(st.src,{params:{search:"",page:st.page}});}
-  if(!Array.isArray(r)||!r.length){st.done=true;return[];}
-  let n=0;r.forEach(u=>{if(add(u))n++;});
-  if(!n)st.done=true; // API ignoriert page oder nur Wiederholungen
-  return fresh;
+  for(let guard=0;guard<=STY.length;guard++){
+    if(r==null)r=await api(st.src,{params:STY[st.si](st.page,st.seen.size)});
+    if(!Array.isArray(r)||!r.length){st.done=true;return fresh;}
+    st.raw+=r.length;
+    let n=0;r.forEach(u=>{if(add(u))n++;});
+    if(n||st.page===1)return fresh;
+    // Seite brachte nichts Neues (Parameter wurde ignoriert) -> anderen Paging-Stil probieren
+    if(st.si>=STY.length-1)break;
+    st.si++;r=null;
+  }
+  st.done=true;return fresh;
 }
 async function startChat(id,name){
   const tries=[["POST","channels/chats",{users:[id]}],["POST","users/self/channels/chats",{users:[id]}],["POST","channels/chats",{user_id:id}],["PUT","channels/chats",{users:[id]}]];
@@ -1191,12 +1204,13 @@ async function newChat(){
     <label class="sbox" style="margin:0">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label></div><div id="ul" style="margin-top:12px"></div>`);
   $("#nb").onclick=()=>go("chats");
   if(NCIO)NCIO.disconnect();
-  const st=NCST||(NCST={src:null,page:0,done:false,seen:new Set(),items:[]});
+  const st=NCST||(NCST={src:null,si:0,raw:0,page:0,done:false,seen:new Set(),items:[]});
   let q="",loading=false,err="";
   const draw=()=>{
     const t=q.toLowerCase(),u=st.items.filter(x=>!t||uName(x).toLowerCase().includes(t));
     $("#ul").innerHTML=(u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:(st.done&&!loading?'<p class="mu">Keine Treffer.</p>':""))
       +(err?`<p class="err">${esc(err)}</p>`:"")
+      +`<p class="mu" style="font-size:11px;margin:10px 0 0;text-align:center">${esc((st.src||"…")+" · Stil "+st.si+" · Seite "+st.page+" · "+st.items.length+" geladen"+(st.done?" · fertig":""))}</p>`
       +(st.done?"":`<div id="usent" style="min-height:48px">${loading?'<div class="spin s"></div>':""}</div>`);
     const se=$("#usent");if(se&&NCIO&&!err)NCIO.observe(se);
   };
