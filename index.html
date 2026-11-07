@@ -360,19 +360,13 @@ nav a:hover:not(.on){background:#f3f3f6}
 .mcm .mi{padding:16px 20px}
 
 /* ── Login: Sdui-Design in zwei Schritten ── */
-#login{position:fixed;inset:0;z-index:300;max-width:none;margin:0;padding:0;overflow:auto;background:var(--bg)}
-#login.s2{background:#fff}
+#login{position:fixed;inset:0;z-index:300;max-width:none;margin:0;padding:0;overflow:auto;background:#fff}
 #login [hidden]{display:none!important}
-#ls1{max-width:400px;margin:8vh auto 0;padding:0 16px}
-#ls1 .lc{border-radius:24px;box-shadow:0 18px 50px rgba(20,20,40,.1);animation:lgin .5s cubic-bezier(.2,.8,.2,1) both}
-@keyframes lgin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #login .slogo{display:flex;justify-content:center;margin-bottom:6px}
 #login .slogo img{height:64px;width:auto;max-width:80%}
 #login .slogo.big{margin:48px 0 40px}#login .slogo.big img{height:92px}
-#ls1 h1{text-align:center;margin:12px 0 4px}#ls1 .lc>p.mu:first-of-type{text-align:center}
 #login input:not([type=hidden]){transition:border-color .2s,box-shadow .2s,background .2s}
 #login input:focus{outline:0;border-color:var(--ac);box-shadow:0 0 0 4px rgba(201,40,95,.15)}
-#ls1 .card[data-sl]:hover{border-color:var(--ac)}
 .l2bar{border-bottom:1px solid #ebebef;background:#fff;position:sticky;top:0;z-index:2}
 .l2in{max-width:640px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 20px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
 #l2school{font-size:17px;font-weight:500;color:var(--tx);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -384,17 +378,32 @@ nav a:hover:not(.on){background:#f3f3f6}
 .l2w .btn{width:100%;height:58px;margin-top:26px;font-size:18px;border-radius:10px;box-shadow:0 8px 22px rgba(201,40,95,.28);transition:transform .15s,box-shadow .15s,filter .15s}
 .l2w .btn:hover{transform:translateY(-1px);filter:brightness(1.06)}.l2w .btn:active{transform:scale(.99)}
 .l2w .err{margin:14px 0 0}
+@keyframes lgin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.l1t{font-size:34px;line-height:1.1;margin:22px 0 4px;letter-spacing:-.01em}
+.l1s{color:var(--mu);font-size:16px;margin:0 0 26px}
+.l2w label.sbx{position:relative;display:block;margin:0;font-weight:400}
+.sbx #sico{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#6e6e78;display:flex;pointer-events:none}.sbx #sico .ic{width:24px;height:24px}
+.l2w .sbx input:not([type=hidden]){padding-left:52px;margin:0}
+.hint{position:relative;margin-top:26px;border:1px solid #e4e4e4;border-radius:10px;padding:20px;line-height:1.35;font-size:16px}
+.hint::before{content:"";position:absolute;left:30px;top:-9px;width:16px;height:16px;background:#fff;border-left:1px solid #e4e4e4;border-top:1px solid #e4e4e4;transform:rotate(45deg)}
+.hint b{display:block;font-weight:600}.hint span{display:block;color:var(--mu)}.hint .or{margin:20px 0}
+#sres{margin-top:18px}
+#sres .card{cursor:pointer;border:1px solid #e4e4e4;border-radius:10px;padding:14px 16px!important;margin-bottom:10px!important;transition:border-color .2s,background .2s}
+#sres .card:hover{border-color:var(--ac);background:#fafafa}
 #login p{white-space:normal}
 </style>
 </head>
 <body>
 <div id="login">
-<div id="ls1"><div class="card lc">
-<div class="slogo"><img src="https://sdui.app/brandings/default/logo/sdui-seven-education-logo.svg" alt="Sdui by seven education"></div>
-<h1>Willkommen</h1><p class="mu" style="margin-top:0">Wähle zuerst deine Schule aus.</p>
-<label>Schule<input id="sq" placeholder="Schule suchen, z. B. Franziskus Koblenz" autocomplete="off"></label>
+<div id="ls1">
+<div class="l2bar"><div class="l2in" style="min-height:62px"></div></div>
+<div class="l2w">
+<h1 class="l1t">Meine Einrichtung finden</h1>
+<p class="l1s">Schule, Kita oder andere Einrichtung suchen</p>
+<label class="sbx"><span id="sico"></span><input id="sq" placeholder="z.B. Goetheschule Weimar" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+<div id="shint" class="hint"><b>Einrichtungsnamen mit Ort suchen</b><span>z.B. statt "GSW" → "Goetheschule Weimar"</span><b class="or">ODER</b><b>PLZ der Einrichtung eingeben</b><span>z.B. "99423"</span></div>
 <div id="sres"></div><input id="slink" type="hidden">
-<p class="mu" style="font-size:12px;margin-top:18px">Inoffizieller Client, nicht mit der Sdui GmbH verbunden. Das Token bleibt nur in deinem Browser.</p>
+<p class="mu" style="font-size:12px;margin-top:26px">Inoffizieller Client, nicht mit der Sdui GmbH verbunden. Das Token bleibt nur in deinem Browser.</p>
 </div></div>
 <div id="ls2" hidden>
 <div class="l2bar"><div class="l2in"><span id="l2school"></span><button type="button" id="l2chg">ändern</button></div></div>
@@ -1498,6 +1507,7 @@ async function profile(){
 let st;
 $("#sq").oninput=e=>{
   clearTimeout(st);const q=e.target.value.trim();
+  $("#shint").hidden=q.length>0;
   if(q.length<3){$("#sres").innerHTML="";return;}
   $("#sres").innerHTML='<p class="mu">Suche …</p>';
   st=setTimeout(async()=>{
@@ -1511,15 +1521,15 @@ $("#sres").onclick=e=>{
   const c=e.target.closest("[data-sl]");if(!c)return;
   $("#slink").value=c.dataset.sl;$("#sq").value=c.dataset.n;
   localStorage.setItem("sdui_slink",c.dataset.sl);localStorage.setItem("sdui_school",c.dataset.n);
-  $("#sres").innerHTML="";$("#sq").value="";loginStep();setTimeout(()=>$("#ident").focus(),50);
+  $("#sres").innerHTML="";$("#sq").value="";$("#shint").hidden=false;loginStep();setTimeout(()=>$("#ident").focus(),50);
 };
 
 $("#ident").onkeydown=$("#pw").onkeydown=e=>{if(e.key==="Enter")$("#go").click();};
 new MutationObserver(hydrate).observe($("#view"),{childList:true,subtree:true});
-$("#pwt").innerHTML=ic("eye");
+$("#sico").innerHTML=ic("search");$("#pwt").innerHTML=ic("eye");
 $("#pwt").onclick=()=>{const p=$("#pw"),show=p.type==="password";p.type=show?"text":"password";$("#pwt").innerHTML=ic(show?"eyeoff":"eye");$("#pwt").setAttribute("aria-label",show?"Passwort verbergen":"Passwort anzeigen");};
 if(localStorage.getItem("sdui_slink")){$("#slink").value=localStorage.getItem("sdui_slink");}
-$("#l2chg").onclick=()=>{$("#slink").value="";$("#sq").value="";$("#sres").innerHTML="";$("#login").classList.remove("s2");$("#ls2").hidden=true;$("#ls1").hidden=false;$("#sq").focus();};
+$("#l2chg").onclick=()=>{$("#slink").value="";$("#sq").value="";$("#sres").innerHTML="";$("#shint").hidden=false;$("#login").classList.remove("s2");$("#ls2").hidden=true;$("#ls1").hidden=false;$("#sq").focus();};
 loginStep();
 if(token)start();
 </script>
