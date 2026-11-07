@@ -81,6 +81,19 @@ nav a .ic{margin-right:6px;width:1.25em;height:1.25em;vertical-align:-.3em}
 .cpbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:70}
 .cp{background:#fff;border-radius:22px;width:min(92vw,520px);overflow:hidden}.cph{display:flex;justify-content:center;align-items:center;position:relative;padding:20px;border-bottom:1px solid var(--bd);font-size:22px}.cph button{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;border-radius:50%;background:#eeeef0;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .cpg{display:flex;flex-wrap:wrap;gap:22px 17px;padding:26px 24px}.cpg button{width:56px;height:56px;border-radius:50%;border:0;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}.cpg .ic{width:28px;height:28px;stroke-width:2.4}
+.sh-box.tall{min-height:88dvh;max-height:88dvh;border-radius:22px 22px 0 0;padding:0 12px 28px}
+.dh{position:relative;padding:12px 100px 14px 16px;margin:0 -12px 12px}
+.dbtn{position:absolute;right:20px;top:12px;display:flex;gap:10px;align-items:center}
+.dbtn button{width:28px;height:28px}.dbtn button .ic{width:14px;height:14px}.dbtn #dmore{background:none;width:28px}.dbtn #dmore .ic{width:20px;height:20px}
+.kp{display:inline-block;padding:3px 9px;font-size:13px;border-radius:999px}
+.dt{font-size:27px;margin:2px 0 0;line-height:1.2}
+.dd{font-size:14.5px;line-height:1.4}
+.dcm{padding:10px;font-size:14px;margin-top:0}
+.drow{padding:12px;gap:12px}.dic{width:36px;height:36px}.dic .ic{width:18px;height:18px;fill:currentColor;stroke:none}
+.dl{font-size:15px}.dv{min-width:0;flex:1}.pill{font-size:15px;padding:5px 12px;min-width:0;max-width:100%;overflow-wrap:anywhere}
+.dmenu{right:52px;top:44px}.dmi{padding:14px 18px;font-size:15px}
+.cph{padding:14px;font-size:18px}.cph button{width:28px;height:28px}.cph button .ic{width:14px;height:14px}
+.cpg{gap:24px 25px;padding:20px}.cpg button{width:40px;height:40px}.cpg .ic{width:20px;height:20px}
 .srow{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}.srow .ic{margin-top:3px;color:var(--mu)}
 .gw{background:#fff;border-radius:20px;padding:12px;box-shadow:0 2px 12px rgba(20,20,40,.06);overflow-x:auto}
 .gh,.gb{display:grid;grid-template-columns:42px repeat(5,minmax(0,1fr));gap:4px;min-width:480px}
@@ -89,7 +102,7 @@ nav a .ic{margin-right:6px;width:1.25em;height:1.25em;vertical-align:-.3em}
 .gx{position:relative}.tk{position:absolute;right:4px;transform:translateY(-7px);font-size:11px;color:var(--mu)}
 .gc{position:relative;background:repeating-linear-gradient(to bottom,#ececf0 0 1px,transparent 1px var(--hp))}
 .blk{position:absolute;box-sizing:border-box;border-radius:8px;padding:4px 6px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;line-height:1.25;font-size:11.5px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,#fff);border-left:4px solid var(--c)}
-.blk b{font-size:13px}.blk.CANCLED{color:#8a8a94;background:#f1f1f3;border-color:#c9c9d1}.blk.CANCLED *{text-decoration:line-through}
+.blk b{font-size:13px}.blk.CANCLED b,.blk.CANCLED span{text-decoration:line-through}.blk.CANCLED *{text-decoration:line-through}
 .blk.SUBSTITUTION{outline:2px solid #f59e0b;outline-offset:-2px}
 .qd{position:absolute;right:3px;top:3px}.qd .ic{width:13px;height:13px}
 .ad{background:color-mix(in srgb,var(--c) 18%,#fff);color:var(--c);border-left:4px solid var(--c);border-radius:8px;padding:4px 6px;font-size:12px;font-weight:600;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -281,6 +294,9 @@ chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
 bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
 poll:'<path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/>',
 check:'<path d="M20 6 9 17l-5-5"/>',
+k2:'<path fill-rule="evenodd" d="M15.5 3a5.5 5.5 0 0 0-5.2 7.3L3.5 17.1V20.5h3.4v-1.8h1.8v-1.8h1.8l2.2-2.2A5.5 5.5 0 1 0 15.5 3Zm1.3 3.2a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z"/>',
+u2:'<circle cx="12" cy="7.5" r="4"/><path d="M4 21c0-4.4 3.6-6.5 8-6.5s8 2.100 8 6.500z"/>',
+c2:'<circle cx="12" cy="4.6" r="2.3"/><path d="M8.3 11.5c0-2 1.6-3.300 3.700-3.300s3.700 1.300 3.700 3.300z"/><circle cx="6" cy="13.6" r="2.3"/><path d="M2.300 20.500c0-2 1.600-3.300 3.700-3.300s3.700 1.300 3.700 3.300z"/><circle cx="18" cy="13.6" r="2.3"/><path d="M14.300 20.500c0-2 1.600-3.300 3.700-3.300s3.700 1.300 3.700 3.300z"/>',
 key:'<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M16 7l3 3"/>',
 refresh:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',
 user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
@@ -768,12 +784,12 @@ async function openSheet(l){
   const row=(i,lab,a,old)=>{const oa=sub?(old||[]).filter(v=>!a.includes(v)):[];return `<div class="drow"><span class="dic">${ic(i)}</span><span class="dl">${lab}</span><span class="dv">${pl(a,canc?"x":"")}${pl(oa,"x")}</span></div>`;};
   const cm=[l.comment,l.meta?.moved_comment].filter(Boolean).join(" · "),nm=lname(l);
   $("#sh-c").innerHTML=`<div class="dwrap" style="--cc:${c}">
-    <div class="dh"><div class="dht">${KIND[l.kind]?`<span class="kp">${KIND[l.kind][0]}</span>`:"<span></span>"}<span class="dbtn"><button id="dmore" aria-label="Mehr">${ic("more")}</button><button id="dx" aria-label="Schließen">${ic("x")}</button></span></div>
+    <div class="dh"><span class="dbtn"><button id="dmore" aria-label="Mehr">${ic("more")}</button><button id="dx" aria-label="Schließen">${ic("x")}</button></span>${KIND[l.kind]?`<div><span class="kp">${KIND[l.kind][0]}</span></div>`:""}
     <h2 class="dt" style="${nm.length>12?"font-size:28px":""}">${esc(nm)}</h2>
-    <div class="dd">${d.toLocaleDateString("de-DE",{weekday:"long"})}, ${String(d.getDate()).padStart(2,"0")} ${d.toLocaleDateString("de-DE",{month:"short"})}<br>${fmtT(l.begins_at)}—${fmtT(l.ends_at)}</div></div>
+    <div class="dd">${d.toLocaleDateString("de-DE",{weekday:"long"})}, ${String(d.getDate()).padStart(2,"0")} ${d.toLocaleDateString("de-DE",{month:"short"}).replace(/^(Jan|Feb|Mär|Apr|Jun|Jul|Aug|Sep|Okt|Nov|Dez)$/,"$1.")}<br>${fmtT(l.begins_at)}—${fmtT(l.ends_at)}</div></div>
     <div class="dmenu" id="dmenu" hidden><div class="dmi" id="dcol">${ic("refresh")}<span>Farbe ändern</span></div></div>
     ${cm?`<div class="dcm">${esc(cm)}</div>`:""}
-    <div class="dcard">${row("key","Raum",R(l),R(o))}${row("user","Lehrer",T(l),T(o))}${row("group","Klasse",G(l),G(o))}</div>
+    <div class="dcard">${row("k2","Raum",R(l),R(o))}${row("u2","Lehrer",T(l),T(o))}${row("c2","Klasse",G(l),G(o))}</div>
     <div id="cb" style="margin-top:14px"><div class="spin s"></div></div></div>`;
   const box=$("#sheet .sh-box");box.classList.add("tall");
   $("#sheet").classList.add("open");
