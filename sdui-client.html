@@ -174,6 +174,30 @@ nav a:hover:not(.on){background:#f3f3f6}
 .spin.s{width:26px;height:26px;border-width:3px;margin:18px auto}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.gh,.gb{grid-template-columns:64px repeat(5,minmax(0,1fr))!important}
+.gw{background:transparent;box-shadow:none;padding:0}
+.pillw{display:inline-block;background:#fdebd9;color:#b4651c;border-radius:999px;padding:5px 14px;font-size:13px;margin:4px 0 6px}
+.mn{display:block;font-style:normal;font-size:12px;color:var(--mu);height:18px}
+.gd b{font-size:24px;font-weight:300;color:#666}.gd.today b{color:var(--ac);font-weight:600}
+.pl{position:absolute;left:0;right:0;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;border-top:1px solid #e6e6ea}
+.pl b{font-size:16px;font-weight:600;color:#222}.pl small{font-size:11.5px;color:var(--mu)}.pl.br{justify-content:center;color:var(--mu);font-size:14px}
+.gry{position:absolute;left:0;right:0;background:#e6e6e8}
+.blk{justify-content:space-between;font-size:12px;border-radius:6px}.blk b{font-size:15px}.blk.SUBSTITUTION{outline:0}
+.blk.all{background:color-mix(in srgb,var(--c) 14%,#fff)}.blk.all b{font-size:12px;word-break:break-word}
+.pt{background:var(--c);color:#fff;border-radius:4px;padding:0 4px;font-weight:600}
+.blk s{opacity:.8}
+.qd{background:#fff;color:var(--ac);width:16px;height:16px;border-radius:50%;font-size:10px;line-height:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.18);right:3px;top:3px}
+.gchip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));z-index:10;display:flex;align-items:center;gap:10px;background:#fff;border-radius:999px;padding:6px 18px 6px 6px;box-shadow:0 4px 16px rgba(20,20,40,.16)}
+.gchip .ic{width:34px;height:34px;padding:8px;background:#ececef;border-radius:50%;color:#555}
+@media(min-width:701px){.gchip{bottom:20px}}
+@media(max-width:700px){.gh,.gb{grid-template-columns:46px repeat(5,minmax(0,1fr))!important}.pl b{font-size:13px}.pl small{font-size:10px}.gd b{font-size:19px}.blk b{font-size:11px}}
+#mdl.open,#mdl.out{display:flex}
+#mdl.open .mbg{animation:fi .2s ease both}#mdl.open .mbox{animation:pop .3s cubic-bezier(.2,.9,.3,1.15) both}
+#mdl.out .mbg{animation:fo .18s ease both}#mdl.out .mbox{animation:po .18s ease both}
+@keyframes fi{from{opacity:0}}@keyframes fo{to{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(26px) scale(.94)}}@keyframes po{to{opacity:0;transform:translateY(14px) scale(.96)}}
+.menu:not([hidden]){animation:pm .18s ease both}@keyframes pm{from{opacity:0;transform:translateY(-6px) scale(.97)}}
+@media(prefers-reduced-motion:reduce){#mdl .mbg,#mdl .mbox,.menu{animation:none!important}}
 </style>
 </head>
 <body>
@@ -356,15 +380,24 @@ function newsItem(n,i,o={}){
 async function news(){
   load();
   try{
-    NEWS=await api_.news(npage);
+    npage=1;NEWS=await api_.news(1);
     const mi=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
     V(`<div class="ph sticky"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
       <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
       <label class="sbox">${ic("search")}<input id="ns" placeholder="News suchen" autocomplete="off"></label>`+
-      NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")+(NEWS.length?"":'<p class="mu">Keine News.</p>')+
-      `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
-    $("#ns").oninput=e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
-    $("#np").onclick=()=>{npage--;news();scrollTo(0,0);};$("#nn").onclick=()=>{npage++;news();scrollTo(0,0);};
+      `<div id="nl">${NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")}</div>`+(NEWS.length?"":'<p class="mu">Keine News.</p>')+'<div id="nmore"></div>');
+    const filt=()=>{const q=($("#ns").value||"").trim().toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
+    $("#ns").oninput=filt;
+    const mo=$("#nmore");let busy=false,done=!NEWS.length;
+    const io=new IntersectionObserver(async es=>{
+      if(!es[0].isIntersecting||busy||done)return;busy=true;mo.innerHTML='<div class="spin s"></div>';
+      try{
+        const more=await api_.news(++npage),ids=new Set(NEWS.map(x=>x.id??x.uuid)),add=more.filter(x=>!ids.has(x.id??x.uuid));
+        if(!add.length)done=true;else{const base=NEWS.length;NEWS.push(...add);$("#nl").insertAdjacentHTML("beforeend",add.map((n,i)=>newsItem(n,base+i,{live:1})).join(""));filt();}
+      }catch(_){done=true;}
+      mo.innerHTML="";busy=false;if(!done){io.unobserve(mo);io.observe(mo);}
+    },{rootMargin:"400px"});
+    io.observe(mo);
     api_.activity().then(a=>{if(a.notification?.unread_count){const b=$("#bellb");if(b)b.hidden=false;}}).catch(()=>{});
   }catch(e){fail(e);}
 }
@@ -391,6 +424,7 @@ document.addEventListener("click",e=>{
   else if(k==="info")infoModal();
   else if(k==="cinfo")modal("Chats","<p>Hier findest du deine Chats mit Lehrkräften, Klassen und Gruppen. In Einweg-Chats (Schloss) können nur Admins schreiben.</p>",`<div class="mf"><button class="btn" data-x style="width:100%">Okay, zurück</button></div>`);
   else if(k==="newchat")location.hash="chats-new";
+  else if(k==="tinfo")modal("Stundenplan","<p>Hier siehst du deine Stunden der Woche. Entfallene Stunden sind durchgestrichen, Vertretungen farbig markiert. Ganztägige Termine laufen als Spalte neben den Stunden. Tippe eine Stunde für Details.</p>",`<div class="mf"><button class="btn" data-x style="width:100%">Okay, zurück</button></div>`);
   else if(k==="pin")modal("Fixierte News",'<p>Eine fixierte News bleibt oben in der Liste, bis der Autor sie wieder löst.</p>');
   else if(k==="tr"&&n)trModal(n);
 });
@@ -413,11 +447,12 @@ async function newsDetail(id){
 }
 
 /* Modal */
+function closeM(){const m=$("#mdl");if(!m||m.className!=="open")return;m.className="out";setTimeout(()=>{if(m.className==="out")m.className="";},180);}
 function modal(t,h,foot){
   let m=$("#mdl");if(!m){m=document.createElement("div");m.id="mdl";document.body.appendChild(m);}
   m.innerHTML=`<div class="mbg"></div><div class="mbox"><div class="mh"><b>${t}</b><button class="ib" data-x aria-label="Schließen">${ic("x")}</button></div><div class="mb">${h}</div>${foot||""}</div>`;
   m.className="open";
-  m.onclick=e=>{if(e.target.classList.contains("mbg")||e.target.closest("[data-x]"))m.className="";};
+  m.onclick=e=>{if(e.target.classList.contains("mbg")||e.target.closest("[data-x]"))closeM();};
 }
 function infoModal(){
   const r=[["info","News sind wichtige Bekanntmachungen, die auch mehrere Gruppen oder Einzelpersonen betreffen können."],["clip","Einer News können Anhänge hinzugefügt werden (z.B. ein Elternbrief als PDF). Zusätzlich kann der Autor eine Lesebestätigung anfordern."],["plus","Alle Nutzer, die News schreiben dürfen (meist Lehrkräfte), sehen ein großes Plus in der unteren Menüleiste."],["info","News sind vergleichbar mit einer Art Rundmail oder einer digitalen Durchsage."]];
@@ -521,9 +556,14 @@ async function timetable(){
     drawTT(mon,t.last_updated_at);
   }catch(e){fail(e);}
 }
-function blockHtml(c,a,P){
-  const l=c.l,t=sh(l,"teachers"),r=sh(l,"bookables");
-  return `<div class="blk ${l.kind||""}" data-i="${c.ix}" style="--c:${lcol(l)};top:${(c.s-a)*P}px;height:${Math.max((c.e-c.s)*P-2,24)}px;left:${c.lane*100/c.n}%;width:calc(${100/c.n}% - 2px)"><b>${esc(lname(l))}</b>${l.comment?`<span class="qd">${ic("info")}</span>`:""}<span>${esc(t)}</span><span>${esc(r)}</span></div>`;
+const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+function blockHtml(c,a,P,x0=0,w=100,all){
+  const l=c.l,o=(l.referenced_target_lessons||[])[0],sub=l.kind==="SUBSTITUTION"&&o;
+  const t=sh(l,"teachers"),r=sh(l,"bookables"),ot=o?sh(o,"teachers"):"",or=o?sh(o,"bookables"):"",nm=lname(l),on=o?lname(o):"";
+  const pill=(v,old)=>sub&&old&&old!==v?`<span class="pt">${esc(v)}</span> <s>${esc(old)}</s>`:esc(v);
+  const name=sub&&on&&on!==nm?`<span class="pt">${esc(nm)}</span> <s>${esc(on)}</s>`:esc(nm);
+  const col=all?((KIND[l.kind]||[])[1]||lcol(l)):lcol(l);
+  return `<div class="blk ${l.kind||""}${all?" all":""}" data-i="${c.ix}" style="--c:${col};top:${(c.s-a)*P}px;height:${Math.max((c.e-c.s)*P-2,24)}px;left:${x0+c.lane*w/c.n}%;width:calc(${w/c.n}% - 2px)"><b>${name}</b>${l.comment?`<span class="qd">❝</span>`:""}<span>${pill(t,ot)}</span><span>${pill(r,or)}</span></div>`;
 }
 function drawTT(mon,upd){
   const now=new Date(),mins=t=>{const d=new Date(t*1000);return d.getHours()*60+d.getMinutes()};
@@ -532,22 +572,37 @@ function drawTT(mon,upd){
     return{n,d,all,ls};});
   const L=days.flatMap(x=>x.ls);
   let a=L.length?Math.min(...L.map(c=>c.s)):480,b=L.length?Math.max(...L.map(c=>c.e)):900;
-  a=Math.floor(a/60)*60;b=Math.ceil(b/60)*60;const P=1.15,H=(b-a)*P;
-  const ticks=[];for(let m=a;m<=b;m+=60)ticks.push(`<div class="tk" style="top:${(m-a)*P}px">${String(m/60).padStart(2,"0")}:00</div>`);
+  a=Math.floor(a/60)*60;b=Math.ceil(b/60)*60;const P=1.3,H=(b-a)*P;
+  /* Zeitraster links: Stunden aus den Daten ableiten */
+  const cnt=new Map();
+  L.forEach(c=>{const h=String(c.l.meta?.displayname_hour||"").replace(/\D/g,""),k=h+"|"+c.s+"|"+c.e,o=cnt.get(k)||{h,s:c.s,e:c.e,n:0};o.n++;cnt.set(k,o);});
+  const per=[];[...cnt.values()].sort((x,y)=>y.n-x.n).forEach(o=>{if(!per.some(p=>o.s<p.e&&o.e>p.s))per.push(o);});
+  per.sort((x,y)=>x.s-y.s);
+  const gaps=per.map((p,i)=>per[i+1]&&per[i+1].s-p.e>=15?[p.e,per[i+1].s]:null).filter(Boolean);
+  const axis=per.map(p=>`<div class="pl" style="top:${(p.s-a)*P}px;height:${(p.e-p.s)*P}px"><small>${hm(p.s)}</small>${p.h?`<b>${p.h}</b>`:"<span></span>"}<small>${hm(p.e)}</small></div>`).join("")+
+    gaps.map(([s,e])=>`<div class="pl br" style="top:${(s-a)*P}px;height:${(e-s)*P}px">-</div>`).join("");
+  const gry=(s,e)=>`<div class="gry" style="top:${(s-a)*P}px;height:${(e-s)*P}px"></div>`;
   const col=x=>{
     const it=x.ls.slice().sort((p,q)=>p.s-q.s),out=[];let cl=[],end=0,lanes=[];
     const flush=()=>{const n=Math.max(...cl.map(c=>c.lane))+1;cl.forEach(c=>{c.n=n;out.push(c);});cl=[];lanes=[];end=0;};
     it.forEach(c=>{if(cl.length&&c.s>=end)flush();let k=lanes.findIndex(e=>e<=c.s);if(k<0){k=lanes.length;lanes.push(0);}lanes[k]=c.e;c.lane=k;cl.push(c);end=Math.max(end,c.e);});
     if(cl.length)flush();
-    return out.map(c=>blockHtml(c,a,P)).join("");
+    const has=x.all.length,w0=has&&out.length?55:100,last=x.ls.length?Math.max(...x.ls.map(c=>c.e)):a;
+    let h=gaps.map(([s,e])=>gry(s,e)).join("")+(!has&&last<b?gry(last,b):"");
+    h+=out.map(c=>blockHtml(c,a,P,0,w0)).join("");
+    /* ganztägige Termine: volle Höhe, neben den Stunden */
+    const aw=100-w0||100;
+    h+=x.all.map((c,i)=>blockHtml({...c,s:a,e:b,lane:0,n:1},a,P,w0+i*aw/x.all.length,aw/x.all.length,true)).join("");
+    return h;
   };
-  const anyAll=days.some(x=>x.all.length);
-  V(`<div class="row" style="justify-content:space-between"><h2>Stundenplan</h2><div class="row"><button class="btn ghost" id="pw_">${ic("left")}</button><button class="btn ghost" id="cw">Heute</button><button class="btn ghost" id="nw">${ic("right")}</button></div></div>
-  <div class="gw"><div class="gh"><div class="gx"></div>${days.map(x=>`<div class="gd ${x.d.toDateString()===now.toDateString()?"today":""}"><small>${x.n}</small><b>${String(x.d.getDate()).padStart(2,"0")}</b></div>`).join("")}</div>
-  ${anyAll?`<div class="gh"><div class="gx mu" style="font-size:10px">ganztägig</div>${days.map(x=>`<div>${x.all.map(c=>`<div class="ad" data-i="${c.ix}" style="--c:${(KIND[c.l.kind]||[])[1]||lcol(c.l)}">${esc(lname(c.l))}</div>`).join("")}</div>`).join("")}</div>`:""}
-  <div class="gb" style="height:${H}px;--hp:${60*P}px"><div class="gx">${ticks.join("")}</div>${days.map(x=>`<div class="gc">${col(x)}</div>`).join("")}</div></div>
-  <p class="mu">Stand: ${esc(upd?new Date(upd).toLocaleString("de-DE"):"")}</p>`);
-  $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};$("#cw").onclick=()=>{weekOff=0;timetable();};
+  const mo=mon.toLocaleDateString("de-DE",{month:"short"});
+  V(hdr("Stundenplan","","tinfo")+
+  `${upd?`<div class="pillw">Stand ${esc(D2(upd))} Uhr</div>`:""}
+  <div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin:4px 0 2px"><button class="ib gr" id="pw_" aria-label="Vorherige Woche">${ic("left")}</button>${weekOff?'<button class="btn ghost" id="cw">Heute</button>':""}<button class="ib gr" id="nw" aria-label="Nächste Woche">${ic("right")}</button></div>
+  <div class="gw"><div class="gh"><div class="gx"></div>${days.map((x,i)=>`<div class="gd ${x.d.toDateString()===now.toDateString()?"today":""}"><em class="mn">${i===0?mo:""}</em><small>${x.n}</small><b>${String(x.d.getDate()).padStart(2,"0")}</b></div>`).join("")}</div>
+  <div class="gb" style="height:${H}px"><div class="gx">${axis}</div>${days.map(x=>`<div class="gc">${col(x)}</div>`).join("")}</div></div>
+  ${me?.grade?.name?`<div class="gchip">${ic("user")}<span>${esc(me.grade.name)}</span></div>`:""}`);
+  $("#pw_").onclick=()=>{weekOff--;timetable();};$("#nw").onclick=()=>{weekOff++;timetable();};if($("#cw"))$("#cw").onclick=()=>{weekOff=0;timetable();};
 }
 /* Bottom Sheet */
 const closeSheet=()=>$("#sheet").classList.remove("open");
@@ -579,7 +634,7 @@ $("#sheet").onclick=e=>{
   const g=e.target.closest("[data-go],[data-out]");
   if(g){closeSheet();g.dataset.out?logout():go(g.dataset.go);}
 };
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeSheet();const m=$("#mdl");if(m)m.className="";}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeSheet();closeM();}});
 $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad");if(c)openSheet(ttL[+c.dataset.i]);});
 
 /* CHATS */
@@ -684,11 +739,19 @@ function drawChat(scroll){
     h+=msgHtml(x,mine);
   });
   V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
-  <button class="btn ghost" id="older" style="display:block;margin:6px auto 10px">Ältere Nachrichten laden</button><div id="ms">${h}</div>
+  ${CH.done?"":'<div id="older" style="min-height:2px"></div>'}<div id="ms">${h}</div>
   ${CH.canPost?`<div id="fchip"></div><div class="cin"><button class="ib pl" id="plus">${ic("plus")}</button><input type="file" id="fi" hidden><input id="mi" placeholder="Neue Nachricht"><button class="ib pl" id="sd">${ic("send")}</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`}`);
   if(keep&&$("#mi"))$("#mi").value=keep;
   $("#bk").onclick=chats;
-  $("#older").onclick=async()=>{try{const o=await api_.msgs(CH.id,CH.page+1);if(!o.length){$("#older").remove();return;}CH.page++;const ids=new Set(CH.msgs.map(x=>x.uuid));CH.msgs=CH.msgs.concat(o.filter(x=>!ids.has(x.uuid)));drawChat(false);}catch(e){alert(e.message);}};
+  if($("#older"))new IntersectionObserver(async(es,io)=>{
+    if(!es[0].isIntersecting||CH.busy)return;CH.busy=true;io.disconnect();$("#older").innerHTML='<div class="spin s"></div>';
+    try{
+      const o=await api_.msgs(CH.id,CH.page+1),ids=new Set(CH.msgs.map(x=>x.uuid)),add=o.filter(x=>!ids.has(x.uuid));
+      if(!add.length)CH.done=true;else{CH.page++;CH.msgs=CH.msgs.concat(add);}
+      const h=document.body.scrollHeight,y=scrollY;drawChat(false);scrollTo(0,y+document.body.scrollHeight-h);
+    }catch(_){CH.done=true;drawChat(false);}
+    CH.busy=false;
+  },{rootMargin:"200px"}).observe($("#older"));
   $("#ci").onclick=chatInfo;
   document.querySelectorAll("[data-nid]").forEach(async el=>{try{el.outerHTML=newsCard(await api_.newsById(el.dataset.nid));}catch(_){el.outerHTML=newsCard(null);}});
   if(CH.canPost){
@@ -708,11 +771,19 @@ function drawChat(scroll){
   }
   if(scroll)window.scrollTo(0,document.body.scrollHeight);
 }
+async function allMembers(id){
+  const out=[],seen=new Set();
+  for(let p=1;p<=60;p++){
+    const r=await api(`channels/${id}/users`,{params:{page:p,search:""}}),add=(r||[]).filter(u=>{const k=u.id??u.uuid??JSON.stringify(u);if(seen.has(k))return false;seen.add(k);return true;});
+    if(!add.length)break;out.push(...add);
+  }
+  return out;
+}
 async function chatInfo(){
   $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="spin s"></div>`;$("#sheet").classList.add("open");
   try{
-    const r=await api_.members(CH.ch);
-    $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="mu">${r.length} Teilnehmer (erste Seite)</div>`+r.map(u=>{const n=u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||""} ${u.lastname||""}`.trim()||"Unbekannt";return `<div class="srow" style="align-items:center"><div class="av" style="width:34px;height:34px;font-size:13px">${ini(n)}</div><div>${esc(n)}<div class="mu">${esc(u.meta?.subtitle||u.type||"")}</div></div></div>`;}).join("");
+    const r=await allMembers(CH.ch);
+    $("#sh-c").innerHTML=`<h3 style="margin:0 0 8px">${esc(CH.name)}</h3><div class="mu">${r.length} Teilnehmer</div>`+r.map(u=>{const n=u.meta?.displayname||u.user?.meta?.displayname||`${u.firstname||""} ${u.lastname||""}`.trim()||"Unbekannt";return `<div class="srow" style="align-items:center"><div class="av" style="width:34px;height:34px;font-size:13px">${ini(n)}</div><div>${esc(n)}<div class="mu">${esc(u.meta?.subtitle||u.type||"")}</div></div></div>`;}).join("");
   }catch(e){$("#sh-c").innerHTML=`<h3>${esc(CH.name)}</h3><p class="err">${esc(e.message)}</p>`;}
 }
 
