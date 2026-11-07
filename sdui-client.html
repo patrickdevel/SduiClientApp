@@ -115,6 +115,37 @@ main{overflow-wrap:anywhere}
 .gb{margin-top:8px}
 .btn.ghost:disabled{opacity:.4;cursor:default}
 @supports(height:100dvh){#app{min-height:100dvh}.sh-box{max-height:85dvh}}
+
+.ph{display:flex;align-items:center;justify-content:space-between}
+.ib.gr{color:#33333a;position:relative}.ib.gr .bd{top:6px;left:auto;right:6px;min-width:10px;width:10px;height:10px;padding:0}
+.sbox{display:flex;align-items:center;gap:10px;background:#ececef;border-radius:12px;padding:0 14px;margin:6px 0 16px;color:var(--mu)}
+.sbox input{margin:0;background:transparent;border:0;padding:12px 0;outline:0!important}
+.mw{position:relative}
+.menu{position:absolute;right:0;top:46px;z-index:30;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(20,20,40,.18);min-width:250px;overflow:hidden}
+.mi{display:flex;gap:12px;align-items:center;padding:14px 16px;cursor:pointer}.mi+.mi{border-top:1px solid var(--bd)}.mi .ic{color:var(--ac)}.mi.rd{color:var(--ac)}
+.pinl{font-size:13px;color:var(--mu);margin-bottom:10px}.pinl a{color:var(--ac);margin-left:4px;cursor:pointer;text-decoration:none}.pinl .ic{width:14px;height:14px}
+.nhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chips{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}.chips .ic{width:14px;color:var(--mu)}
+.chip{background:#eceef1;border-radius:999px;padding:3px 12px;font-size:14px}.chip.a{background:#dcf0fa;color:#1d6f99}
+.nact{display:flex;align-items:center;gap:2px;flex:none}.nact .ib{color:var(--mu)}
+.flagb{border:0;background:none;padding:4px;cursor:pointer}
+.flag{display:block;width:30px;height:30px;border-radius:50%;background:linear-gradient(#000 33.3%,#dd0000 0 66.6%,#ffce00 0);box-shadow:0 4px 8px rgba(0,0,0,.25)}
+.ncard .nimg{max-height:none;width:100%}
+#mdl{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:16px}#mdl.open{display:flex}
+.mbg{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.mbox{position:relative;background:#fff;border-radius:20px;width:100%;max-width:520px;max-height:90dvh;display:flex;flex-direction:column;overflow:hidden}
+.mh{display:flex;align-items:center;justify-content:center;position:relative;padding:14px 56px;border-bottom:1px solid var(--bd)}
+.mh .ib{position:absolute;right:10px;background:#ececef;color:#444;width:34px;height:34px}
+.mb{padding:16px 18px;overflow:auto;flex:1}.mf{padding:14px 18px;border-top:1px solid var(--bd)}
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin:14px 0}
+.tabs button{flex:1;border:0;background:none;padding:10px;color:var(--mu);font-weight:600;border-bottom:2px solid transparent;cursor:pointer}.tabs button.on{color:var(--ac);border-color:var(--ac)}
+.mb select{width:100%;padding:12px 14px;border:0;border-radius:12px;background:#f0f0f2;font:inherit;margin-top:6px}
+.mb .ncard{box-shadow:0 2px 12px rgba(20,20,40,.1)}
+.irow{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}.irow .ic{flex:none;width:38px;height:38px;padding:9px;border-radius:50%;background:#fdecf2;color:var(--ac)}
+.sw{width:46px;height:26px;border-radius:99px;border:0;background:#8a8a92;position:relative;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}.sw.on{background:var(--ac)}.sw.on::after{left:23px}
+.empty{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:90px;text-align:center}
+.okc{width:84px;height:84px;border-radius:50%;background:#e3f4e8;color:#1fa24a;display:flex;align-items:center;justify-content:center;margin-bottom:10px}.okc .ic{width:40px;height:40px}
 </style>
 </head>
 <body>
@@ -170,6 +201,8 @@ plus:'<path d="M12 5v14M5 12h14"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 x:'<path d="M18 6 6 18M6 6l12 12"/>',
+menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
 more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
 out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'
 };
@@ -245,7 +278,7 @@ function route(){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile"].includes(p))));
   document.body.classList.remove("inchat");
   if(me)updateBadge();
-  ({news,timetable,chats,cloud,courses,profile}[p]||news)();
+  ({news,timetable,chats,cloud,courses,profile,notifications}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
 
@@ -268,19 +301,109 @@ const load=()=>{document.body.classList.remove("inchat");V('<p class="mu">Lade �
 const fail=e=>V(`<div class="card err">${esc(e.message)}</div>`);
 
 /* NEWS */
-let npage=1;
+let npage=1,NEWS=[];
+const D2=t=>{const d=new Date(t);return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});};
+const bodyOf=n=>n.content_rendered?clean(n.content_rendered):esc(n.content);
+const grpOf=n=>(n.channels||[]).map(c=>c.meta?.displayname||c.name).filter(Boolean).join(", ")||"Alle";
+function newsItem(n,i,o={}){
+  const A=k=>o.live?` data-act="${k}"`:"",ti=o.title??n.title;
+  return `<div class="card ncard" data-ni="${i}">${n.is_pinned?`<div class="pinl">${ic("pin")} Vom Autor fixiert <a href="#"${A("pin")}>Was heißt das?</a></div>`:""}
+  <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
+  <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><button class="ib"${A("more")} aria-label="Text kopieren">${ic("more")}</button></div></div>
+  <div class="mu">${D2(n.publish_at||n.created_at)}</div>
+  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${n.survey?surveyHtml(n.survey):""}</div>`;
+}
 async function news(){
   load();
   try{
-    const items=await api_.news(npage);
-    V(`<h2>News</h2>`+items.map(n=>`<div class="card"><div class="mu">${esc(n.user?.meta?.displayname||"")} · ${new Date(n.publish_at||n.created_at).toLocaleString("de-DE")}${n.is_pinned?" · "+ic("pin"):""}</div>
-      <h3 style="margin:6px 0">${esc(n.title)}</h3>
-      <div class="news-body">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>
-      ${attHtml(n.attachments)}
-      ${n.survey?surveyHtml(n.survey):""}</div>`).join("")+(items.length?"":'<p class="mu">Keine News.</p>')+
+    NEWS=await api_.news(npage);
+    const mi=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
+    V(`<div class="ph"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
+      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
+      <label class="sbox">${ic("search")}<input id="ns" placeholder="News suchen" autocomplete="off"></label>`+
+      NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")+(NEWS.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">${ic("left")} Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter ${ic("right")}</button></div>`);
     $("#np").onclick=()=>{npage--;news();scrollTo(0,0);};$("#nn").onclick=()=>{npage++;news();scrollTo(0,0);};
+    $("#ns").oninput=e=>{const q=e.target.value.toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
+    api_.activity().then(a=>{if(a.notification?.unread_count){const b=$("#bellb");if(b)b.hidden=false;}}).catch(()=>{});
   }catch(e){fail(e);}
+}
+document.addEventListener("click",e=>{
+  const m=$("#menu");if(m&&!e.target.closest("[data-act=menu]"))m.hidden=true;
+  const g=e.target.closest("[data-mg]");if(g){g.dataset.mg==="out"?logout():go(g.dataset.mg);return;}
+  const b=e.target.closest("#view [data-act]");if(!b)return;e.preventDefault();
+  const k=b.dataset.act,n=NEWS[+b.closest(".ncard")?.dataset.ni];
+  if(k==="menu")m.hidden=!m.hidden;
+  else if(k==="bell")go("notifications");
+  else if(k==="info")infoModal();
+  else if(k==="pin")modal("Fixierte News",'<p>Eine fixierte News bleibt oben in der Liste, bis der Autor sie wieder löst.</p>');
+  else if(k==="tr"&&n)trModal(n);
+  else if(k==="more"&&n)navigator.clipboard?.writeText(n.content||n.title||"").then(()=>alert("Text kopiert"));
+});
+
+/* Modal */
+function modal(t,h,foot){
+  let m=$("#mdl");if(!m){m=document.createElement("div");m.id="mdl";document.body.appendChild(m);}
+  m.innerHTML=`<div class="mbg"></div><div class="mbox"><div class="mh"><b>${t}</b><button class="ib" data-x aria-label="Schließen">${ic("x")}</button></div><div class="mb">${h}</div>${foot||""}</div>`;
+  m.className="open";
+  m.onclick=e=>{if(e.target.classList.contains("mbg")||e.target.closest("[data-x]"))m.className="";};
+}
+function infoModal(){
+  const r=[["info","News sind wichtige Bekanntmachungen, die auch mehrere Gruppen oder Einzelpersonen betreffen können."],["clip","Einer News können Anhänge hinzugefügt werden (z.B. ein Elternbrief als PDF). Zusätzlich kann der Autor eine Lesebestätigung anfordern."],["plus","Alle Nutzer, die News schreiben dürfen (meist Lehrkräfte), sehen ein großes Plus in der unteren Menüleiste."],["info","News sind vergleichbar mit einer Art Rundmail oder einer digitalen Durchsage."]];
+  modal("Start / News",`<p><b>Auf der Startseite können wichtige Ankündigungen als News geteilt werden.</b></p>`+r.map(([i,t])=>`<div class="irow">${ic(i)}<div>${t}</div></div>`).join(""),`<div class="mf"><button class="btn" data-x style="width:100%">Okay, zurück</button></div>`);
+}
+
+/* Übersetzen (Google Translate über /api/translate) */
+const LANGS=[["en","Englisch (Britisch)"],["fr","Französisch"],["es","Spanisch"],["it","Italienisch"],["tr","Türkisch"],["ar","Arabisch"],["ru","Russisch"],["uk","Ukrainisch"],["pl","Polnisch"],["ro","Rumänisch"],["fa","Persisch"],["zh-CN","Chinesisch"]];
+const TRC={};
+async function trApi(q,target){
+  if(!PROXY)throw new Error("Übersetzen funktioniert nur über den Vercel-Proxy (nicht als lokale Datei).");
+  const r=await fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q,target})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.message||"Übersetzung fehlgeschlagen");
+  return j.translations;
+}
+async function trNews(n,lang){
+  const k=(n.id||n.uuid)+lang;if(TRC[k])return TRC[k];
+  const d=new DOMParser().parseFromString(bodyOf(n),"text/html"),ns=[],w=document.createTreeWalker(d.body,NodeFilter.SHOW_TEXT);
+  while(w.nextNode())if(w.currentNode.nodeValue.trim())ns.push(w.currentNode);
+  const out=await trApi([n.title||"",...ns.map(x=>x.nodeValue)],lang);
+  ns.forEach((x,i)=>x.nodeValue=out[i+1]);
+  return TRC[k]={title:out[0],html:d.body.innerHTML};
+}
+function trModal(n){
+  let lang=localStorage.getItem("sdui_lang")||"en",tab="tr";
+  const show=async()=>{
+    const box=$("#trb");box.innerHTML='<p class="mu" style="text-align:center">Übersetze …</p>';
+    try{
+      if(tab==="tr"){const t=await trNews(n,lang);box.dir=["ar","fa"].includes(lang)?"rtl":"ltr";box.innerHTML=newsItem(n,0,{title:t.title,html:t.html});}
+      else{box.dir="ltr";box.innerHTML=newsItem(n,0);}
+      hydrate();
+    }catch(e){box.innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+  };
+  modal("Übersetzen",`<label class="mu" style="font-size:12px">SPRACHE / LANGUAGE</label><select id="trl">${LANGS.map(([c,t])=>`<option value="${c}"${c===lang?" selected":""}>${t}</option>`).join("")}</select>
+    <div class="tabs"><button class="on" data-tb="tr">Übersetzung</button><button data-tb="orig">Original</button></div><div id="trb"></div>
+    <p class="mu" style="text-align:center;font-size:12px;margin-top:16px">Automatische Übersetzung: Bitte Originaltext beachten, um Missverständnisse zu vermeiden.</p>`);
+  $("#trl").onchange=e=>{lang=e.target.value;localStorage.setItem("sdui_lang",lang);tab="tr";document.querySelectorAll("[data-tb]").forEach(x=>x.classList.toggle("on",x.dataset.tb==="tr"));show();};
+  document.querySelectorAll("[data-tb]").forEach(x=>x.onclick=()=>{tab=x.dataset.tb;document.querySelectorAll("[data-tb]").forEach(y=>y.classList.toggle("on",y===x));show();});
+  show();
+}
+
+/* Benachrichtigungen (Endpunkt users/self/notifications ist geraten) */
+async function notifications(){
+  load();
+  let list=[],un=false;
+  try{list=await api("users/self/notifications",{params:{page:1}});}catch(_){}
+  if(!Array.isArray(list))list=[];
+  const draw=()=>{
+    const l=un?list.filter(x=>!x.read_at&&!x.is_read):list;
+    V(`<div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Benachrichtigungen</h2></div>
+    <div class="row" style="justify-content:flex-end;margin:16px 0"><span>Nur ungelesen</span><button class="sw${un?" on":""}" id="nu" role="switch" aria-checked="${un}"></button></div>`+
+    (l.length?l.map(x=>`<div class="card"><b>${esc(x.meta?.title||x.title||"")}</b><div>${esc(x.meta?.message||x.message||x.content||"")}</div><div class="mu">${x.created_at?D2(x.created_at):""}</div></div>`).join(""):
+    `<div class="empty"><div class="okc">${ic("check")}</div><b>Es ist ruhig hier…</b><span class="mu">Neue Mitteilungen werden hier angezeigt.</span></div>`));
+    $("#nb").onclick=()=>go("news");$("#nu").onclick=()=>{un=!un;draw();};
+  };
+  draw();
 }
 function attHtml(list){
   return (list||[]).map(a=>{
@@ -385,7 +508,7 @@ $("#sheet").onclick=e=>{
   const g=e.target.closest("[data-go],[data-out]");
   if(g){closeSheet();g.dataset.out?logout():go(g.dataset.go);}
 };
-document.addEventListener("keydown",e=>e.key==="Escape"&&closeSheet());
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeSheet();const m=$("#mdl");if(m)m.className="";}});
 $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad");if(c)openSheet(ttL[+c.dataset.i]);});
 
 /* CHATS */
