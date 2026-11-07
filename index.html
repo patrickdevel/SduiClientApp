@@ -266,6 +266,25 @@ nav a:hover:not(.on){background:#f3f3f6}
 .lbs img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-drag:none;will-change:transform}
 .lbs img.snap{transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .26s}
 .lbn{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;font-size:15px;z-index:2;pointer-events:none;padding:0 16px}
+
+/* ── Chat-Topbar: dünne graue Trennlinie ── */
+.chead{border-bottom:1px solid #e3e3e9}
+
+/* ── Chat-Eingabeleiste: Blur-Fade statt weißem Block ── */
+.cin{background:transparent!important;z-index:6;overflow:visible}
+.cin::before{
+  content:"";
+  position:absolute;
+  left:-12px;right:-12px;top:-30px;bottom:0;
+  z-index:-1;                 /* liegt hinter Eingabefeld & Buttons */
+  pointer-events:none;
+  background:rgba(246,246,248,.78);
+  -webkit-backdrop-filter:blur(18px) saturate(1.15);
+  backdrop-filter:blur(18px) saturate(1.15);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 58%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 58%);
+}
+.cin input:not([hidden]){background:rgba(255,255,255,.85)}
 </style>
 </head>
 <body>
