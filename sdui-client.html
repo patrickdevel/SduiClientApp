@@ -123,7 +123,7 @@ async function news(){
       <h3 style="margin:6px 0">${esc(n.title)}</h3>
       <div class="news-body">${n.content_rendered||esc(n.content)}</div>
       ${(n.attachments||[]).map(a=>`<div><a href="${esc(a.meta?.download_uri||a.meta?.uri)}" target="_blank" rel="noopener">📎 ${esc(a.name)}</a></div>`).join("")}
-      ${n.survey?surveyHtml(n.survey):""}</div>`).join("")||'<p class="mu">Keine News.</p>'+
+      ${n.survey?surveyHtml(n.survey):""}</div>`).join("")+(items.length?"":'<p class="mu">Keine News.</p>')+
       `<div class="row"><button class="btn ghost" ${npage<2?"disabled":""} id="np">← Zurück</button><span class="mu">Seite ${npage}</span><button class="btn ghost" id="nn">Weiter →</button></div>`);
     $("#np").onclick=()=>{npage--;news();};$("#nn").onclick=()=>{npage++;news();};
   }catch(e){fail(e);}
@@ -205,7 +205,7 @@ async function profile(){
     V(`<h2>Profil</h2><div class="card"><h3 style="margin-top:0">${esc(u.meta?.displayname||u.firstname+" "+u.lastname)}</h3>
       <p class="mu">${esc(u.meta?.subtitle||"")}</p>
       <p>Schule: ${esc(u.school?.name)}<br>Klasse: ${esc(u.grade?.name||"–")}<br>Rolle: ${esc(u.primary_role?.name||u.type)}<br>E-Mail: ${esc(u.email||"–")}</p></div>
-      ${a?`<div class="card"><b>Aktivität</b><pre class="mu" style="white-space:pre-wrap">${esc(JSON.stringify(a,null,2))}</pre></div>`:""}`);
+      ${a?`<div class="card"><b>Aktivität</b><p style="margin-bottom:0">💬 Ungelesene Chats: <b>${a.chat?.unread_count??0}</b><br>🔔 Neue Benachrichtigungen: <b>${a.notification?.unread_count??0}</b></p></div>`:""}`);
   }catch(e){fail(e);}
 }
 
