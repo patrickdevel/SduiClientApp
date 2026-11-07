@@ -341,6 +341,9 @@ nav a:hover:not(.on){background:#f3f3f6}
   .gchip{bottom:calc(var(--bb) + var(--nav-h) + 14px)}
   main{padding-bottom:calc(var(--nav-h) + var(--bb) + 28px)}
 }
+.ncs{position:sticky;top:0;z-index:20;background:var(--bg);margin:0 -12px;padding:4px 12px 10px}
+.ncs .warn{margin:8px 0 10px}
+@media(min-width:701px){.ncs{margin:-20px -20px 0;padding:20px 20px 10px}}
 /* ── Nachrichten-Menü ── */
 .msg{position:relative;white-space:pre-wrap}
 .msg .shared,.msg .fcard{white-space:normal}
@@ -965,7 +968,7 @@ const LS=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch(_){retu
 const tog=(k,id)=>{const a=LS(k),i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);localStorage.setItem(k,JSON.stringify(a));};
 const cid=c=>String(c.chat?.id||c.id);
 function chatRow(c,inact){
-  const n=c.meta?.displayname||c.code,id=cid(c),post=inact||c.chat?.can?.["post-message"]===0?0:1;
+  const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
   const txt=previewOf(lm),un=unreadOf(c);UNR[id]=c.chat?.unread_count??c.unread_count??0;UNA[id]=un;
@@ -1004,23 +1007,23 @@ const isInact=c=>{
 /* Die API liefert inaktive Chats evtl. nur mit Extra-Parameter: bekannte Varianten einmal pro Sitzung durchprobieren */
 const INP=[{status:"inactive"},{inactive:1},{is_active:0},{active:0},{filter:"inactive"},{state:"inactive"}];
 async function extraInactive(q,baseIds){
-  let k=sessionStorage.getItem("sdui_inp");
+  let k=sessionStorage.getItem("sdui_inp2");
   if(k==="-1")return[];
   const get=i=>api("users/self/channels/chats",{params:{page:1,search:q,limit:50,...INP[i]}});
   if(k!=null){try{return await get(+k);}catch(_){return[];}}
   for(let i=0;i<INP.length;i++){
     try{
       const r=await get(i);
-      if(Array.isArray(r)&&r.some(c=>!baseIds.has(cid(c)))){sessionStorage.setItem("sdui_inp",String(i));return r;}
+      if(Array.isArray(r)&&r.some(c=>!baseIds.has(cid(c)))){sessionStorage.setItem("sdui_inp2",String(i));return r;}
     }catch(_){}
   }
-  sessionStorage.setItem("sdui_inp","-1");return[];
+  sessionStorage.setItem("sdui_inp2","-1");return[];
 }
 async function chats(){
   load();
   const q=sessionStorage.getItem("cq")||"",cfu=!!sessionStorage.getItem("cfu"),car=!!sessionStorage.getItem("carch"),cin=!!sessionStorage.getItem("cina"),pins=LS("sdui_pins"),ar=LS("sdui_arch"),mk=LS("sdui_unread");
   try{
-    const all=await api_.chats(1,q),ids=new Set(all.map(cid));
+    const all=await api_.chats(1,q,50),ids=new Set(all.map(cid));
     const ex=await extraInactive(q,ids).catch(()=>[]);
     const inList=[...all.filter(isInact),...ex.filter(c=>!ids.has(cid(c)))].filter((c,i,a)=>a.findIndex(x=>cid(x)===cid(c))===i);
     const inIds=new Set(inList.map(cid));
@@ -1071,9 +1074,9 @@ async function startChat(id,name){
   alert("Chat konnte nicht erstellt werden.\n\n"+log.join("\n"));
 }
 async function newChat(){
-  V(`<div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
+  V(`<div class="ncs"><div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
     <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div>
-    <label class="sbox" style="margin:0 0 18px">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label><div id="ul"></div>`);
+    <label class="sbox" style="margin:0">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label></div><div id="ul" style="margin-top:12px"></div>`);
   $("#nb").onclick=()=>go("chats");
   let list=[];
   const draw=q=>{
