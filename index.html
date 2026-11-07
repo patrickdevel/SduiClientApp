@@ -1005,19 +1005,27 @@ const isInact=c=>{
   return !!lm&&isKey(lm.content)&&/course|kurs/i.test(lm.content);
 };
 /* Die API liefert inaktive Chats evtl. nur mit Extra-Parameter: bekannte Varianten einmal pro Sitzung durchprobieren */
-const INP=[{status:"inactive"},{inactive:1},{is_active:0},{active:0},{filter:"inactive"},{state:"inactive"}];
+const INP=[
+  {params:{include_inactive:"true"}},{params:{with_inactive:"true"}},{params:{show_inactive:"true"}},{params:{include_inactive:1}},
+  {params:{inactive:"true"}},{params:{inactive:1}},{params:{is_active:"false"}},{params:{is_active:0}},{params:{active:"false"}},{params:{active:0}},
+  {params:{status:"inactive"}},{params:{state:"inactive"}},{params:{filter:"inactive"}},{params:{type:"inactive"}},
+  {path:"users/self/channels/chats/inactive"},{path:"users/self/channels/inactive-chats"},{path:"users/self/channels/chats-inactive"}
+];
+let INPTRY=0;
 async function extraInactive(q,baseIds){
-  let k=sessionStorage.getItem("sdui_inp2");
+  let k=sessionStorage.getItem("sdui_inp3");
   if(k==="-1")return[];
-  const get=i=>api("users/self/channels/chats",{params:{page:1,search:q,limit:50,...INP[i]}});
+  const get=i=>api(INP[i].path||"users/self/channels/chats",{params:{page:1,search:q,limit:50,...(INP[i].params||{})}});
   if(k!=null){try{return await get(+k);}catch(_){return[];}}
+  INPTRY=0;
   for(let i=0;i<INP.length;i++){
     try{
+      INPTRY++;
       const r=await get(i);
-      if(Array.isArray(r)&&r.some(c=>!baseIds.has(cid(c)))){sessionStorage.setItem("sdui_inp2",String(i));return r;}
+      if(Array.isArray(r)&&r.length&&(INP[i].path||r.some(c=>!baseIds.has(cid(c))))){sessionStorage.setItem("sdui_inp3",String(i));console.log("Sdui: inaktive Chats über",JSON.stringify(INP[i]));return r;}
     }catch(_){}
   }
-  sessionStorage.setItem("sdui_inp2","-1");return[];
+  sessionStorage.setItem("sdui_inp3","-1");return[];
 }
 async function chats(){
   load();
@@ -1036,7 +1044,7 @@ async function chats(){
       `<div class="row" style="flex-wrap:nowrap;margin:6px 0 18px"><label class="sbox" style="flex:1;margin:0">${ic("search")}<input id="cs" placeholder="Chat und Nachrichten suchen" value="${esc(q)}"></label><div class="mw"><button class="ib gr${cfu||car?" act":""}" data-act="more" aria-label="Filter">${ic("filter")}</button><div class="menu mm" hidden>${fl.map(([i,k,t])=>`<div class="mi" data-cf="${k}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div>`+
       (car?'<h3 style="margin:0 0 10px">Archivierte Gruppen</h3>':"")+
       (cin?"":(l.length?`<div class="clist">${l.map(([c])=>chatRow(c)).join("")}</div>`:`<p class="mu">${car?"Keine archivierten Chats.":"Keine Chats."}</p>`))+
-      (!car&&!cfu&&inList.length?`<h2 style="font-size:22px;margin:${cin?"4px":"28px"} 0 10px">Noch nicht aktiv</h2><div class="clist">${inList.map(c=>chatRow(c,true)).join("")}</div>`:(cin?'<p class="mu">Keine inaktiven Chats.</p>':"")));
+      (!car&&!cfu&&inList.length?`<h2 style="font-size:22px;margin:${cin?"4px":"28px"} 0 10px">Noch nicht aktiv</h2><div class="clist">${inList.map(c=>chatRow(c,true)).join("")}</div>`:(cin?`<p class="mu">Sdui hat keine noch nicht aktiven Chats geliefert (${INP.length} Abfrage-Varianten getestet). Schick mir die Anfrage aus den Entwicklertools der echten Sdui-App.</p>`:"")));
     $("#cs").onchange=e=>{sessionStorage.setItem("cq",e.target.value);chats();};
     document.querySelectorAll(".chat").forEach(el=>el.onclick=e=>{
       if(e.target.closest(".mw"))return;
