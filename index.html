@@ -271,7 +271,7 @@ nav a:hover:not(.on){background:#f3f3f6}
 .chead{border-bottom:1px solid #e3e3e9}
 
 /* ── Gemeinsame Höhe: Chat-Eingabe und Tabbar sitzen auf derselben Linie ── */
-:root{--bb:calc(8px + env(safe-area-inset-bottom,0px));--bar-h:48px}
+:root{--bb:calc(8px + env(safe-area-inset-bottom,0px));--bar-h:48px;--nav-h:40px}
 
 /* ── Chat-Eingabeleiste: Blur-Fade statt weißem Block ── */
 .cin{background:transparent!important;z-index:6;overflow:visible}
@@ -296,7 +296,7 @@ nav a:hover:not(.on){background:#f3f3f6}
   #tabbar{
     left:12px;right:12px;
     bottom:var(--bb);
-    height:var(--bar-h);
+    height:var(--nav-h);
     align-items:center;
     background:transparent;
     border:0;
@@ -330,10 +330,10 @@ nav a:hover:not(.on){background:#f3f3f6}
     mask-image:linear-gradient(to bottom,transparent 0,#000 70%);
   }
   .tab{padding:0}
-  .tab .ic{width:22px;height:22px;margin:0 auto 1px}
-  .tab span{display:block;line-height:1.1;font-size:10.5px}
-  .gchip{bottom:calc(var(--bb) + var(--bar-h) + 14px)}
-  main{padding-bottom:calc(var(--bar-h) + var(--bb) + 28px)}
+  .tab .ic{width:20px;height:20px;margin:0 auto 1px}
+  .tab span{display:block;line-height:1.1;font-size:10px}
+  .gchip{bottom:calc(var(--bb) + var(--nav-h) + 14px)}
+  main{padding-bottom:calc(var(--nav-h) + var(--bb) + 28px)}
 }
 </style>
 </head>
