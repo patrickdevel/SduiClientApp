@@ -454,6 +454,25 @@ body.inchat::before{display:none}
 #sres .card{cursor:pointer;border:1px solid #e4e4e4;border-radius:10px;padding:14px 16px!important;margin-bottom:10px!important;transition:border-color .2s,background .2s}
 #sres .card:hover{border-color:var(--ac);background:#fafafa}
 #login p{white-space:normal}
+
+/* Umfragen & Lesebestätigung */
+.sv{margin-top:14px;border:1px solid var(--bd);border-radius:14px;padding:12px}
+.sv>b{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.svo{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:transparent;color:inherit;cursor:pointer;overflow:hidden;font-size:15px}
+.svo .svf{position:absolute;left:0;top:0;bottom:0;background:var(--ac);opacity:.15;transition:width .3s}
+.svo>span{position:relative}
+.svo.on{border-color:var(--ac)}
+.svo:disabled{cursor:default;opacity:.8}
+.svl{display:flex;align-items:center;gap:8px}
+.svc{width:20px;height:20px;border:2px solid var(--bd);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.svc.sq{border-radius:6px}
+.svo.on .svc{background:var(--ac);border-color:var(--ac);color:#fff}
+.svc .ic{width:14px;height:14px}
+.svp{font-size:13px;color:var(--mu);white-space:nowrap}
+.btn.svs{margin-top:10px;width:100%}.btn.svs:disabled{opacity:.4;cursor:default}
+.rc{margin-top:14px}.rc .rcm{margin-bottom:8px}
+.btn.rcb{width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.rcb:disabled{opacity:.6;cursor:default}
 </style>
 </head>
 <body>
@@ -769,7 +788,7 @@ async function api(path,{method="GET",params,body,quiet}={}){
   const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json",...(body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token&&{Authorization:"Bearer "+token})},body:body?(body instanceof FormData?body:JSON.stringify(body)):undefined});
   if(r.status===401&&token&&!quiet){logout();throw new Error("Sitzung abgelaufen");}
   const j=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||(r.status===401?"Benutzername oder Passwort falsch.":"Fehler "+r.status));
+  if(!r.ok){const er=new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||(r.status===401?"Benutzername oder Passwort falsch.":"Fehler "+r.status));er.status=r.status;throw er;}
   return j.data;
 }
 const api_ = {
@@ -853,7 +872,7 @@ function newsItem(n,i,o={}){
   <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
   <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
   <div class="mu">${D2(n.publish_at||n.created_at)}</div>
-  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${n.survey?surveyHtml(n.survey):""}</div>`;
+  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${n.survey?surveyHtml(n.survey,!o.live):""}${rcHtml(n,!o.live)}</div>`;
 }
 async function news(){
   load();
@@ -1079,13 +1098,103 @@ function attHtml(list){
     return fileHtml(a.name,a.extension,a.size??a.meta?.size,d);
   }).join("");
 }
-function surveyHtml(s){
-  const o=s.meta?.options||[];
-  return `<div style="margin-top:10px"><b>${ic("poll")} ${esc(s.question)}</b>`+o.map(x=>`<div><button class="btn ghost" style="margin-top:6px" ${s.meta.is_over?"disabled":""} data-sv="${s.uuid}" data-o="${x.uuid}">${x.is_chosen?ic("check")+" ":""}${esc(x.name)}</button></div>`).join("")+`</div>`;
+/* UMFRAGEN */
+const svId=s=>s.uuid||s.id;
+const svOpts=s=>s.meta?.options||s.options||[];
+const svOver=s=>!!(s.meta?.is_over??s.is_over);
+const svMulti=s=>!!(s.meta?.is_multiple_choice??s.meta?.multiple_choice??s.meta?.is_multiple??s.meta?.allow_multiple??s.is_multiple_choice??s.multiple_choice)||(+(s.meta?.max_choices??s.meta?.max_votes??s.max_choices??1)>1);
+const svCnt=x=>{for(const k of ["votes_count","vote_count","votes","count","total_votes"]){const v=x[k]??x.meta?.[k];if(typeof v==="number")return v;}return null;};
+function surveyHtml(s,ro){
+  const o=svOpts(s),over=svOver(s),multi=svMulti(s),id=svId(s),lock=over||ro;
+  const cnt=o.map(svCnt),has=o.length>0&&cnt.every(c=>c!==null),tot=has?cnt.reduce((a,b)=>a+b,0):0;
+  const rows=o.map((x,i)=>{
+    const ch=!!x.is_chosen,pc=has&&tot?Math.round(cnt[i]/tot*100):0;
+    return `<button type="button" class="svo${ch?" on":""}" data-sv="${esc(id)}" data-o="${esc(x.uuid||x.id)}" aria-pressed="${ch}"${lock?" disabled":""}>${has?`<span class="svf" style="width:${pc}%"></span>`:""}<span class="svl"><i class="svc${multi?" sq":""}">${ch?ic("check"):""}</i>${esc(x.name)}</span>${has?`<span class="svp">${pc}% · ${cnt[i]}</span>`:""}</button>`;
+  }).join("");
+  const meta=[over?"Umfrage beendet":"",multi&&!over?"Mehrfachauswahl möglich":"",(s.meta?.is_anonymous??s.is_anonymous)?"Anonym":""].filter(Boolean).join(" · ");
+  return `<div class="sv" data-svid="${esc(id)}" data-svm="${multi?1:0}"><b>${ic("poll")} ${esc(s.question)}</b>${rows}${multi&&!lock?'<button type="button" class="btn svs" data-svs disabled>Abstimmen</button>':""}${meta?`<div class="mu" style="margin-top:8px">${esc(meta)}</div>`:""}</div>`;
+}
+/* Karte nach einer Aktion neu laden, ohne die ganze Seite zu wechseln */
+async function refreshNewsCard(card){
+  const ni=+card.dataset.ni,n=NEWS[ni];if(!n)return;
+  const fresh=await api_.newsById(n.id??n.uuid);
+  NEWS[ni]=fresh;
+  const t=document.createElement("div");t.innerHTML=newsItem(fresh,ni,{live:1});
+  const nc=t.firstElementChild;nc.hidden=card.hidden;card.replaceWith(nc);
+}
+async function submitVote(wrap,ids){
+  const card=wrap.closest(".ncard");wrap.querySelectorAll("button").forEach(x=>x.disabled=true);
+  try{
+    await api_.vote(wrap.dataset.svid,{options:ids});
+    try{await refreshNewsCard(card);}catch(_){
+      const n=NEWS[+card.dataset.ni],sv=n&&n.survey;
+      if(sv){svOpts(sv).forEach(x=>{x.is_chosen=ids.includes(x.uuid||x.id);});card.querySelector(".sv").outerHTML=surveyHtml(sv,false);}
+    }
+  }catch(x){alert("Abstimmen fehlgeschlagen: "+x.message);wrap.querySelectorAll("button").forEach(b=>{b.disabled=b.hasAttribute("data-svs")?!wrap.querySelector(".svo.on"):false;});}
+}
+/* LESEBESTÄTIGUNG */
+const RCK="sdui_rc_done";
+const rcLocal=()=>{try{return JSON.parse(localStorage.getItem(RCK)||"[]");}catch(_){return [];}};
+function rcInfo(n){
+  const id=n.id??n.uuid;let req=false,done=false;
+  for(const o of [n,n.meta||{}])for(const k of Object.keys(o)){
+    if(!/confirm/i.test(k))continue;
+    const v=o[k],isDoneKey=/confirmed|read_at|is_read/i.test(k)&&!/require|request|need/i.test(k);
+    if(v&&typeof v==="object"&&!Array.isArray(v)){
+      req=true;
+      for(const k2 of Object.keys(v))if(/confirmed|read_at|is_read|^read$/i.test(k2)&&v[k2])done=true;
+    }else if(isDoneKey){if(v){done=true;req=true;}}
+    else if(v)req=true;
+  }
+  if(req&&!done&&rcLocal().includes(String(id)))done=true;
+  return {req,done,id};
+}
+function rcHtml(n,ro){
+  const i=rcInfo(n);if(!i.req)return"";
+  return `<div class="rc"><div class="mu rcm">${i.done?"Du hast die Lesebestätigung gesendet.":"Der Autor bittet um eine Lesebestätigung."}</div>`+
+    (i.done?`<button type="button" class="btn rcb" disabled>${ic("check")} Lesebestätigung gesendet</button>`
+           :`<button type="button" class="btn rcb" data-rc="${esc(i.id)}"${ro?" disabled":""}>Lesebestätigung senden</button>`)+`</div>`;
+}
+/* Der genaue Endpunkt ist nicht öffentlich dokumentiert: bekannte Varianten der Reihe nach probieren, die funktionierende merken */
+async function rcSend(id){
+  const base="channels/news/"+encodeURIComponent(id)+"/";
+  let tries=[["POST","confirm"],["PUT","confirm"],["POST","read-confirmation"],["PUT","read-confirmation"],["POST","confirmation"],["PUT","confirmation"],["POST","confirm-read"],["PUT","confirm-read"],["POST","read"],["PUT","read"]];
+  const m=localStorage.getItem("sdui_rc_ep");
+  if(m){const [me,pa]=m.split(" ");tries=[[me,pa],...tries.filter(t=>!(t[0]===me&&t[1]===pa))];}
+  let last=null;
+  for(const [method,path] of tries){
+    try{await api(base+path,{method,body:{}});localStorage.setItem("sdui_rc_ep",method+" "+path);return;}
+    catch(e){last=e;if(e.status!==404&&e.status!==405)throw e;}
+  }
+  throw last||new Error("Kein passender Endpunkt gefunden");
 }
 document.addEventListener("click",async e=>{
-  const b=e.target.closest("[data-sv]");if(!b)return;
-  try{await api_.vote(b.dataset.sv,{options:[b.dataset.o]});news();}catch(x){alert(x.message);}
+  const b=e.target.closest("[data-sv],[data-svs],[data-rc]");if(!b||b.disabled)return;
+  if(b.hasAttribute("data-rc")){
+    const card=b.closest(".ncard"),id=b.dataset.rc;if(!card)return;
+    b.disabled=true;b.textContent="Wird gesendet …";
+    try{
+      await rcSend(id);
+      const l=rcLocal();if(!l.includes(String(id))){l.push(String(id));localStorage.setItem(RCK,JSON.stringify(l.slice(-200)));}
+      try{await refreshNewsCard(card);}catch(_){const n=NEWS[+card.dataset.ni];if(n)card.querySelector(".rc").outerHTML=rcHtml(n,false);}
+    }catch(x){
+      b.disabled=false;b.textContent="Lesebestätigung senden";
+      console.warn("Lesebestätigung fehlgeschlagen",x,NEWS[+card.dataset.ni]);
+      alert("Lesebestätigung konnte nicht gesendet werden: "+x.message);
+    }
+    return;
+  }
+  const wrap=b.closest(".sv");if(!wrap||!wrap.closest(".ncard"))return;
+  const multi=wrap.dataset.svm==="1";
+  if(b.hasAttribute("data-svs")){
+    const ids=[...wrap.querySelectorAll(".svo.on")].map(x=>x.dataset.o);
+    if(ids.length)submitVote(wrap,ids);return;
+  }
+  if(multi){
+    b.classList.toggle("on");b.setAttribute("aria-pressed",b.classList.contains("on"));
+    const c=b.querySelector(".svc");if(c)c.innerHTML=b.classList.contains("on")?ic("check"):"";
+    const sb=wrap.querySelector("[data-svs]");if(sb)sb.disabled=!wrap.querySelector(".svo.on");
+  }else submitVote(wrap,[b.dataset.o]);
 });
 
 /* TIMETABLE */
