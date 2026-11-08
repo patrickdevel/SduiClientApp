@@ -806,7 +806,7 @@ async function api(path,{method="GET",params,body,quiet}={}){
   const r=await fetch(PROXY?PROXY+encodeURIComponent(u.href):u,{method,headers:{"Accept":"application/json",...(body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token&&{Authorization:"Bearer "+token})},body:body?(body instanceof FormData?body:JSON.stringify(body)):undefined});
   if(r.status===401&&token&&!quiet){logout();throw new Error("Sitzung abgelaufen");}
   const j=await r.json().catch(()=>({}));
-  if(!r.ok){const er=new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||(r.status===401?"Benutzername oder Passwort falsch.":"Fehler "+r.status));er.status=r.status;throw er;}
+  if(!r.ok){const er=new Error((j.meta&&j.meta.errors&&j.meta.errors[0])||j.message||(r.status===401?"Benutzername oder Passwort falsch.":"Fehler "+r.status));er.status=r.status;er.body=j;throw er;}
   return j.data;
 }
 const api_ = {
@@ -1638,26 +1638,36 @@ async function contactsMore(st){
   st.done=true;return fresh;
 }
 async function startChat(id,name){
-  const nid=/^\d+$/.test(String(id))?Number(id):id;
-  const bodies=[{users:[nid]},{user_ids:[nid]},{users:[{id:nid}]},{participants:[nid]},{members:[nid]},{user_id:nid},{users:[String(id)]}];
-  const eps=[["PUT","channels/chats"],["PUT","users/self/channels/chats"],["POST","users/self/channels/chats"],["POST","channels/chats"]];
+  const nid=/^\d+$/.test(String(id))?Number(id):id,sid=String(id);
+  const fd=(...kv)=>()=>{const f=new FormData();kv.forEach(([k,v])=>f.append(k,v));return f;};
+  const js=o=>()=>o;
+  const bodies=[
+    js({users:[nid]}),js({user_ids:[nid]}),js({users:[{id:nid}]}),js({participants:[nid]}),js({members:[nid]}),js({user_id:nid}),
+    js({users:[sid]}),js({user_ids:[sid]}),js({type:"chat",users:[nid]}),js({users:[nid],meta:{displayname:name}}),
+    js({users:[nid],name:name}),js({recipients:[nid]}),js({user:nid}),js({users:[nid],is_group:false}),
+    fd(["users[]",sid]),fd(["users[0]",sid]),fd(["user_ids[]",sid]),fd(["user_id",sid]),fd(["users",sid]),fd(["participants[]",sid])
+  ];
+  const eps=[["PUT","channels/chats"],["POST","channels/chats"],["POST","users/self/channels/chats"]];
   let tries=[];for(const [m,p] of eps)for(let i=0;i<bodies.length;i++)tries.push([m,p,i]);
-  try{const sv=JSON.parse(localStorage.getItem("sdui_nc_ep")||"null");if(sv){tries=[sv,...tries.filter(t=>!(t[0]===sv[0]&&t[1]===sv[1]&&t[2]===sv[2]))];}}catch(_){}
-  const log=[],dead=new Set();
+  try{const sv=JSON.parse(localStorage.getItem("sdui_nc_ep2")||"null");if(sv){tries=[sv,...tries.filter(t=>!(t[0]===sv[0]&&t[1]===sv[1]&&t[2]===sv[2]))];}}catch(_){}
+  const log=[],dead=new Set();let n=0;
   for(const [method,path,i] of tries){
     if(dead.has(method+path))continue;
+    const body=bodies[i]();
     try{
-      const r=await api(path,{method,body:bodies[i]}),cid_=r?.id||r?.chat?.id;
-      localStorage.setItem("sdui_nc_ep",JSON.stringify([method,path,i]));
+      const r=await api(path,{method,body}),cid_=r?.id||r?.chat?.id;
+      localStorage.setItem("sdui_nc_ep2",JSON.stringify([method,path,i]));
       if(cid_){openChat(String(r.chat?.id||cid_),true,name,String(r.id||cid_));return;}
       go("chats");return;
     }catch(e){
+      n++;
+      const bs=body instanceof FormData?"form:"+[...body.keys()].join(","):JSON.stringify(body);
       if(/HTTP-Methode/i.test(e.message)){dead.add(method+path);log.push(method+" "+path+" → Methode nicht erlaubt");}
-      else log.push(method+" "+path+" "+JSON.stringify(bodies[i])+" → "+(e.status||"?")+" "+e.message);
+      else log.push(method+" "+path+" "+bs+" → "+(e.status||"?")+" "+JSON.stringify(e.body||e.message).slice(0,220));
     }
   }
   console.warn("Chat erstellen fehlgeschlagen\n"+log.join("\n"));
-  alert("Chat konnte nicht erstellt werden.\n\n"+[...new Set(log)].slice(0,8).join("\n"));
+  alert("Chat konnte nicht erstellt werden ("+n+" Versuche).\n\nDetails stehen in der Konsole. Erste Antworten:\n"+[...new Set(log)].slice(0,3).join("\n"));
 }
 let NCIO=null;
 async function newChat(){
