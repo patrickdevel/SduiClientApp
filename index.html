@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sdui Web</title>
+<title>Sdui+</title>
+<link rel="icon" type="image/png" href="sduiplusicon.png">
+<link rel="apple-touch-icon" href="sduiplusicon.png">
+<meta name="apple-mobile-web-app-title" content="Sdui+">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
 <style>
 :root{--bg:#f4f4f6;--card:#fff;--tx:#1a1a1f;--mu:#6e6e78;--ac:#c9285f;--bd:#ebebef;--rd:#e5484d}
@@ -581,7 +584,7 @@ html[data-theme=dark] .pill{box-shadow:none}
 <div id="ls2" hidden>
 <div class="l2bar"><div class="l2in"><span id="l2school"></span><button type="button" id="l2chg">ändern</button></div></div>
 <div class="l2w">
-<div class="slogo big"><img src="https://sdui.app/brandings/default/logo/sdui-seven-education-logo.svg" alt="Sdui by seven education"></div>
+<div class="slogo big"><img src="logoplus.png" alt="Sdui+" onerror="this.outerHTML='<b style=&quot;font-size:44px&quot;>Sdui+</b>'"></div>
 <label>E-Mail / Benutzername<input id="ident" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
 <label>Passwort<div class="pwr"><input id="pw" type="password" autocomplete="current-password"><button type="button" class="ib" id="pwt" aria-label="Passwort anzeigen"></button></div></label>
 <button class="btn" id="go">Einloggen</button>
@@ -591,7 +594,7 @@ html[data-theme=dark] .pill{box-shadow:none}
 </div>
 
 <div id="app">
-<nav id="nav"><h2>Sdui Web</h2></nav>
+<nav id="nav"><h2>Sdui+</h2></nav>
 <main id="view"></main>
 <div id="tabbar"></div>
 </div>
@@ -903,7 +906,7 @@ const api_ = {
 
 const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil",settings:"Einstellungen"};
 function buildNav(){
-  $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
+  $("#nav").innerHTML='<h2>Sdui+</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();go(a.dataset.p);};
   const TABS=[["news","News","news"],["timetable","Stunden","cal"],["chats","Chats","chat"],["more","Mehr","more"]];
   $("#tabbar").innerHTML=TABS.map(([k,l,i])=>`<a class="tab" data-t="${k}">${ic(i)}<span>${l}</span>${k==="chats"?'<i class="bd" hidden></i>':""}</a>`).join("");
