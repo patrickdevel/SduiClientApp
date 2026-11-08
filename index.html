@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -474,6 +473,8 @@ body.inchat::before{display:none}
 .rc{margin-top:14px}.rc .rcm{margin-bottom:8px}
 .btn.rcb{width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn.rcb:disabled{opacity:.6;cursor:default}
+.msg.svm{background:var(--card,#fff);color:var(--tx);width:92%;max-width:92%;align-self:flex-start}
+.msg.svm .sv{margin-top:0}
 </style>
 </head>
 <body>
@@ -873,7 +874,7 @@ function newsItem(n,i,o={}){
   <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
   <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
   <div class="mu">${D2(n.publish_at||n.created_at)}</div>
-  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${n.survey?surveyHtml(n.survey,!o.live):""}${rcHtml(n,!o.live)}</div>`;
+  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${(()=>{const sv=findSurvey(n);return sv?surveyHtml(sv,!o.live):"";})()}${rcHtml(n,!o.live)}</div>`;
 }
 async function news(){
   load();
@@ -1100,21 +1101,76 @@ function attHtml(list){
   }).join("");
 }
 /* UMFRAGEN */
+const SVC=new Map();
 const svId=s=>s.uuid||s.id;
 const svOpts=s=>s.meta?.options||s.options||[];
-const svOver=s=>!!(s.meta?.is_over??s.is_over);
+const svQ=s=>s.question||s.title||s.name||"Umfrage";
+const isSv=o=>!!o&&typeof o==="object"&&!Array.isArray(o)&&Array.isArray(o.meta?.options||o.options)&&(o.meta?.options||o.options).length>0&&(o.question||o.title||o.name!==undefined);
+function findSurvey(o,d=0){
+  if(!o||typeof o!=="object"||d>3)return null;
+  for(const k of Object.keys(o)){
+    if(k==="user"||k==="channels"||k==="file"||k==="attachments")continue;
+    const v=o[k];
+    if(Array.isArray(v)){for(const it of v){if(isSv(it))return it;const r=findSurvey(it,d+1);if(r)return r;}}
+    else if(v&&typeof v==="object"){if(isSv(v))return v;const r=findSurvey(v,d+1);if(r)return r;}
+  }
+  return null;
+}
+const findSv=o=>isSv(o)?o:findSurvey(o);
+const svEnd=s=>s.meta?.ends_at??s.ends_at??s.meta?.end_date??s.end_date??s.meta?.expires_at??s.expires_at??null;
+const svOver=s=>{if(s.meta?.is_over??s.is_over)return true;const e=svEnd(s);return e?new Date(e).getTime()<Date.now():false;};
 const svMulti=s=>!!(s.meta?.is_multiple_choice??s.meta?.multiple_choice??s.meta?.is_multiple??s.meta?.allow_multiple??s.is_multiple_choice??s.multiple_choice)||(+(s.meta?.max_choices??s.meta?.max_votes??s.max_choices??1)>1);
-const svCnt=x=>{for(const k of ["votes_count","vote_count","votes","count","total_votes"]){const v=x[k]??x.meta?.[k];if(typeof v==="number")return v;}return null;};
+const svCnt=x=>{for(const k of ["votes_count","vote_count","votes","count","total_votes","answers_count","chosen_count"]){const v=x[k]??x.meta?.[k];if(typeof v==="number")return v;if(Array.isArray(v))return v.length;}return null;};
+const svPct=x=>{const v=x.percentage??x.percent??x.meta?.percentage??x.meta?.percent;return typeof v==="number"?Math.round(v):null;};
+const svCh=(s,x)=>{
+  const id=String(x.uuid||x.id);
+  for(const k of ["is_chosen","chosen","is_selected","selected","voted","has_voted","is_voted","voted_by_me"]){
+    if(x[k]!==undefined&&x[k]!==null)return !!x[k];
+    if(x.meta&&x.meta[k]!=null)return !!x.meta[k];
+  }
+  for(const k of ["my_votes","user_votes","chosen_options","my_options","selected_options","my_answers"]){
+    const a=s[k]??s.meta?.[k];
+    if(Array.isArray(a))return a.some(v=>String(v?.uuid??v?.id??v?.option_id??v)===id);
+  }
+  return false;
+};
 function surveyHtml(s,ro){
   const o=svOpts(s),over=svOver(s),multi=svMulti(s),id=svId(s),lock=over||ro;
-  const cnt=o.map(svCnt),has=o.length>0&&cnt.every(c=>c!==null),tot=has?cnt.reduce((a,b)=>a+b,0):0;
+  SVC.set(String(id),s);console.debug("Umfrage",id,s);
+  const cnt=o.map(svCnt),pct=o.map(svPct);
+  const hasC=o.length>0&&cnt.every(c=>c!==null),tot=hasC?cnt.reduce((a,b)=>a+b,0):0;
+  const hasP=!hasC&&o.length>0&&pct.every(c=>c!==null),has=hasC||hasP;
+  let anyChosen=false;
   const rows=o.map((x,i)=>{
-    const ch=!!x.is_chosen,pc=has&&tot?Math.round(cnt[i]/tot*100):0;
-    return `<button type="button" class="svo${ch?" on":""}" data-sv="${esc(id)}" data-o="${esc(x.uuid||x.id)}" aria-pressed="${ch}"${lock?" disabled":""}>${has?`<span class="svf" style="width:${pc}%"></span>`:""}<span class="svl"><i class="svc${multi?" sq":""}">${ch?ic("check"):""}</i>${esc(x.name)}</span>${has?`<span class="svp">${pc}% · ${cnt[i]}</span>`:""}</button>`;
+    const ch=svCh(s,x);if(ch)anyChosen=true;
+    const pc=hasC?(tot?Math.round(cnt[i]/tot*100):0):hasP?pct[i]:0;
+    const lab=has?(hasC?`${pc}% · ${cnt[i]}`:`${pc}%`):"";
+    return `<button type="button" class="svo${ch?" on":""}" data-sv="${esc(id)}" data-o="${esc(x.uuid||x.id)}" aria-pressed="${ch}"${lock?" disabled":""}>${has?`<span class="svf" style="width:${pc}%"></span>`:""}<span class="svl"><i class="svc${multi?" sq":""}">${ch?ic("check"):""}</i><span>${esc(x.name??x.text??x.title??"")}${ch&&lock?' <small class="mu">· Deine Antwort</small>':""}</span></span>${lab?`<span class="svp">${lab}</span>`:""}</button>`;
   }).join("");
-  const meta=[over?"Umfrage beendet":"",multi&&!over?"Mehrfachauswahl möglich":"",(s.meta?.is_anonymous??s.is_anonymous)?"Anonym":""].filter(Boolean).join(" · ");
-  return `<div class="sv" data-svid="${esc(id)}" data-svm="${multi?1:0}"><b>${ic("poll")} ${esc(s.question)}</b>${rows}${multi&&!lock?'<button type="button" class="btn svs" data-svs disabled>Abstimmen</button>':""}${meta?`<div class="mu" style="margin-top:8px">${esc(meta)}</div>`:""}</div>`;
+  const e=svEnd(s),ed=e?new Date(e):null;
+  const meta=[over?"Umfrage beendet":(ed&&!isNaN(ed)?"Läuft bis "+ed.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr":""),
+    multi&&!over?"Mehrfachauswahl möglich":"",(s.meta?.is_anonymous??s.is_anonymous)?"Anonym":"",
+    over&&!anyChosen?"Du hast nicht abgestimmt":""].filter(Boolean).join(" · ");
+  return `<div class="sv" data-svid="${esc(id)}" data-svm="${multi?1:0}"><b>${ic("poll")} ${esc(svQ(s))}</b>${rows}${multi&&!lock?'<button type="button" class="btn svs" data-svs disabled>Abstimmen</button>':""}${meta?`<div class="mu" style="margin-top:8px">${esc(meta)}</div>`:""}</div>`;
 }
+/* Umfrage in Chats */
+const svTarget=x=>findSv(x?.target)||findSv(x?.meta)||findSv(x?.survey)||null;
+const svRefId=x=>x?.target?.uuid||x?.target?.id||x?.target_id||x?.meta?.survey_id||x?.meta?.target_id||null;
+const isSvMsg=x=>!!x&&!isNewsMsg(x)&&!isDel(x)&&(/survey|umfrage|poll/i.test(x.target_type||"")||(isKey(x.content||"")&&/survey|poll/i.test(x.content))||!!svTarget(x));
+function svMsgHtml(x){
+  const sv=svTarget(x),who=x.user?.meta?.displayname||"",rid=svRefId(x);
+  const t=new Date(x.created_at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  const txt=(!x.content||isKey(x.content))?((who?who+" ":"")+"hat eine Umfrage geteilt"):sysText(x);
+  const body=sv?surveyHtml(sv,false):rid?`<div class="sv" data-svlazy="${esc(rid)}"><div class="spin s"></div></div>`:"";
+  return `<div class="intro">${esc(txt)}</div>`+(body?`<div class="msg svm" data-mu="${esc(x.uuid||x.id||"")}">${body}<div class="tm">${t}</div></div>`:"");
+}
+new MutationObserver(()=>{
+  document.querySelectorAll("[data-svlazy]:not([data-busy])").forEach(async el=>{
+    el.dataset.busy="1";
+    try{const f=findSv(await api("channels/surveys/"+encodeURIComponent(el.dataset.svlazy)));if(!f)throw 0;el.outerHTML=surveyHtml(f,false);}
+    catch(_){el.outerHTML='<div class="sv mu">Umfrage nicht verfügbar</div>';}
+  });
+}).observe(document.body,{childList:true,subtree:true});
 /* Karte nach einer Aktion neu laden, ohne die ganze Seite zu wechseln */
 async function refreshNewsCard(card){
   const ni=+card.dataset.ni,n=NEWS[ni];if(!n)return;
@@ -1124,12 +1180,18 @@ async function refreshNewsCard(card){
   const nc=t.firstElementChild;nc.hidden=card.hidden;card.replaceWith(nc);
 }
 async function submitVote(wrap,ids){
-  const card=wrap.closest(".ncard");wrap.querySelectorAll("button").forEach(x=>x.disabled=true);
+  const card=wrap.closest(".ncard"),id=wrap.dataset.svid;
+  wrap.querySelectorAll("button").forEach(x=>x.disabled=true);
   try{
-    await api_.vote(wrap.dataset.svid,{options:ids});
-    try{await refreshNewsCard(card);}catch(_){
-      const n=NEWS[+card.dataset.ni],sv=n&&n.survey;
-      if(sv){svOpts(sv).forEach(x=>{x.is_chosen=ids.includes(x.uuid||x.id);});card.querySelector(".sv").outerHTML=surveyHtml(sv,false);}
+    await api_.vote(id,{options:ids});
+    let ok=false;
+    try{
+      if(card){await refreshNewsCard(card);ok=true;}
+      else{const f=findSv(await api("channels/surveys/"+encodeURIComponent(id)));if(f){wrap.outerHTML=surveyHtml(f,false);ok=true;}}
+    }catch(_){}
+    if(!ok){
+      const sv=SVC.get(String(id));
+      if(sv){svOpts(sv).forEach(x=>{x.is_chosen=ids.includes(String(x.uuid||x.id));});wrap.outerHTML=surveyHtml(sv,false);}
     }
   }catch(x){alert("Abstimmen fehlgeschlagen: "+x.message);wrap.querySelectorAll("button").forEach(b=>{b.disabled=b.hasAttribute("data-svs")?!wrap.querySelector(".svo.on"):false;});}
 }
@@ -1190,7 +1252,7 @@ document.addEventListener("click",async e=>{
     }
     return;
   }
-  const wrap=b.closest(".sv");if(!wrap||!wrap.closest(".ncard"))return;
+  const wrap=b.closest(".sv");if(!wrap)return;
   const multi=wrap.dataset.svm==="1";
   if(b.hasAttribute("data-svs")){
     const ids=[...wrap.querySelectorAll(".svo.on")].map(x=>x.dataset.o);
@@ -1600,7 +1662,7 @@ async function newChat(){
   $("#ul").onclick=e=>{const r=e.target.closest("[data-u]");if(r)startChat(r.dataset.u,r.dataset.n);};
 }
 function newsCard(n){
-  if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}</div>`;
+  if(n&&n.title)return `<div class="shared">${ic("news")} <b>${esc(n.title)}</b><div class="nbody">${n.content_rendered?clean(n.content_rendered):esc(n.content)}</div>${attHtml(n.attachments)}${(()=>{const sv=findSurvey(n);return sv?surveyHtml(sv,false):"";})()}</div>`;
   if(n&&n.id)return `<div class="shared" data-nid="${n.id}"><div class="spin s"></div></div>`;
   return `<div class="shared">${ic("news")} <b>News nicht mehr verfügbar</b><br><span class="mu">Sie wurde gelöscht oder du hast keinen Zugriff.</span></div>`;
 }
@@ -1635,6 +1697,7 @@ function previewOf(x){
 }
 function msgHtml(x,mine,cont){
   if(x.deleted_at||x.unset_at)return `<div class="del ${mine?"me":""}">Diese Nachricht wurde gelöscht</div>`;
+  if(isSvMsg(x))return svMsgHtml(x);
   if(isOpenMsg(x))return openHtml(x);
   if(isSys(x))return `<div class="intro">${esc(sysText(x))}</div>`;
   let b="";
