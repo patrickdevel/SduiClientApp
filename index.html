@@ -1640,7 +1640,17 @@ async function contactsMore(st){
   }
   st.done=true;return fresh;
 }
+async function findChatWith(name){
+  try{
+    const norm=t=>String(t||"").trim().toLowerCase();
+    const l=await api_.chats(1,name,50);
+    const c=l.find(c=>norm(c.meta?.displayname||c.code)===norm(name)&&(c.users_count==null||c.users_count<=2));
+    if(c){const post=c.chat?.can?.["post-message"]===0?0:1;openChat(String(cid(c)),post===1,c.meta?.displayname||c.code||name,String(c.id));return true;}
+  }catch(_){}
+  return false;
+}
 async function startChat(id,name){
+  if(await findChatWith(name))return;
   const nid=/^\d+$/.test(String(id))?Number(id):id,sid=String(id);
   const fd=(...kv)=>()=>{const f=new FormData();kv.forEach(([k,v])=>f.append(k,v));return f;};
   const js=o=>()=>o;
@@ -1651,7 +1661,7 @@ async function startChat(id,name){
     fd(["users[]",sid]),fd(["users[0]",sid]),fd(["user_ids[]",sid]),fd(["user_id",sid]),fd(["users",sid]),fd(["participants[]",sid])
   ];
   const eps=[["PUT","channels/chats"],["POST","channels/chats"],["POST","users/self/channels/chats"]];
-  let tries=[];for(const [m,p] of eps)for(let i=0;i<bodies.length;i++)tries.push([m,p,i]);
+  let tries=[0,1,2,3,5,8,14,18].map(i=>["PUT","channels/chats",i]);
   try{const sv=JSON.parse(localStorage.getItem("sdui_nc_ep2")||"null");if(sv){tries=[sv,...tries.filter(t=>!(t[0]===sv[0]&&t[1]===sv[1]&&t[2]===sv[2]))];}}catch(_){}
   const log=[],dead=new Set();let n=0;
   for(const [method,path,i] of tries){
@@ -1670,7 +1680,8 @@ async function startChat(id,name){
     }
   }
   console.warn("Chat erstellen fehlgeschlagen\n"+log.join("\n"));
-  alert("Chat konnte nicht erstellt werden ("+n+" Versuche).\n\nDetails stehen in der Konsole. Erste Antworten:\n"+[...new Set(log)].slice(0,3).join("\n"));
+  if(await findChatWith(name))return;
+  alert("Mit "+name+" konnte kein neuer Chat erstellt werden.\n\nSdui lehnt die Anfrage ab. Das kann an fehlenden Rechten liegen oder daran, dass die API das so nicht zulässt. Wenn du den Chat einmal in der Sdui-App oder im Sdui-Web startest, erscheint er hier in der Liste und du kannst ihn weiterverwenden.");
 }
 let NCIO=null;
 async function newChat(){
