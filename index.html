@@ -483,6 +483,14 @@ body.inchat::before{display:none}
 .cr2 .cm{min-width:0;flex:1}
 .cr2 .cn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crow>div:nth-child(2){min-width:0}
+.ncbar{display:flex;align-items:center;gap:8px;min-height:48px}
+.ncbar h2{flex:1;text-align:center;margin:0;font-size:18px}
+.ncbar .ib:last-child{margin-left:auto}
+.ncbar h2+.ib,.ncbar input+.ib{flex:none}
+.ncbar input{flex:1;min-width:0;border:0;background:#ececf1;border-radius:14px;padding:11px 14px;font-size:16px;color:var(--tx);outline:none}
+.ncbar #nb{flex:none}
+.av3{font-size:13px;font-weight:600}
+.ncs .warn{display:flex}
 </style>
 </head>
 <body>
@@ -1630,29 +1638,37 @@ async function contactsMore(st){
   st.done=true;return fresh;
 }
 async function startChat(id,name){
-  const tries=[["POST","channels/chats",{users:[id]}],["POST","users/self/channels/chats",{users:[id]}],["POST","channels/chats",{user_id:id}],["PUT","channels/chats",{users:[id]}]];
-  const log=[];
-  for(const [method,path,body] of tries){
+  const nid=/^\d+$/.test(String(id))?Number(id):id;
+  const bodies=[{users:[nid]},{user_ids:[nid]},{users:[{id:nid}]},{participants:[nid]},{members:[nid]},{user_id:nid},{users:[String(id)]}];
+  const eps=[["PUT","channels/chats"],["PUT","users/self/channels/chats"],["POST","users/self/channels/chats"],["POST","channels/chats"]];
+  let tries=[];for(const [m,p] of eps)for(let i=0;i<bodies.length;i++)tries.push([m,p,i]);
+  try{const sv=JSON.parse(localStorage.getItem("sdui_nc_ep")||"null");if(sv){tries=[sv,...tries.filter(t=>!(t[0]===sv[0]&&t[1]===sv[1]&&t[2]===sv[2]))];}}catch(_){}
+  const log=[],dead=new Set();
+  for(const [method,path,i] of tries){
+    if(dead.has(method+path))continue;
     try{
-      const r=await api(path,{method,body}),cid_=r?.id||r?.chat?.id;
+      const r=await api(path,{method,body:bodies[i]}),cid_=r?.id||r?.chat?.id;
+      localStorage.setItem("sdui_nc_ep",JSON.stringify([method,path,i]));
       if(cid_){openChat(String(r.chat?.id||cid_),true,name,String(r.id||cid_));return;}
       go("chats");return;
-    }catch(e){log.push(method+" "+path+" → "+e.message);}
+    }catch(e){
+      if(/HTTP-Methode/i.test(e.message)){dead.add(method+path);log.push(method+" "+path+" → Methode nicht erlaubt");}
+      else log.push(method+" "+path+" "+JSON.stringify(bodies[i])+" → "+(e.status||"?")+" "+e.message);
+    }
   }
-  alert("Chat konnte nicht erstellt werden.\n\n"+log.join("\n"));
+  console.warn("Chat erstellen fehlgeschlagen\n"+log.join("\n"));
+  alert("Chat konnte nicht erstellt werden.\n\n"+[...new Set(log)].slice(0,8).join("\n"));
 }
 let NCIO=null;
 async function newChat(){
-  V(`<div class="ncs"><div class="ph" style="justify-content:flex-start"><button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2 style="margin:0;flex:1;text-align:center;font-size:17px;margin-right:40px">Neuer Chat</h2></div>
-    <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div>
-    <label class="sbox" style="margin:0">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label></div><div id="ul" style="margin-top:12px"></div>`);
-  $("#nb").onclick=()=>go("chats");
+  V(`<div class="ncs"><div class="ncbar" id="ncbar"></div>
+    <div class="warn">Ein Chat kann nur mit registrierten Nutzer/innen erstellt werden.</div></div><div id="ul" style="margin-top:12px"></div>`);
   if(NCIO)NCIO.disconnect();
   const st=NCST||(NCST={src:null,si:0,raw:0,page:0,done:false,seen:new Set(),items:[]});
   let q="",loading=false,err="";
   const draw=()=>{
     const t=q.toLowerCase(),u=st.items.filter(x=>!t||uName(x).toLowerCase().includes(t));
-    $("#ul").innerHTML=(u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${ic("user")}</div><div class="cm"><div>${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:(st.done&&!loading?'<p class="mu">Keine Treffer.</p>':""))
+    $("#ul").innerHTML=(u.length?`<div class="clist">${u.map(x=>`<div class="cr2" data-u="${esc(uId(x))}" data-n="${esc(uName(x))}" style="align-items:center"><div class="av3">${esc(ini(uName(x)))}</div><div class="cm"><div class="cn">${esc(uName(x))}</div><div class="s2">${esc(x.meta?.subtitle||x.user?.meta?.subtitle||"")}</div></div>${ic("right")}</div>`).join("")}</div>`:(st.done&&!loading?'<p class="mu">Keine Treffer.</p>':""))
       +(err?`<p class="err">${esc(err)}</p>`:"")
       +(st.done&&!loading&&!err?`<p class="mu" style="font-size:13px;margin:18px 4px 24px;text-align:center;line-height:1.45">Eventuell wurden nicht alle Nutzer geladen. Wird die gesuchte Person nicht angezeigt, starte bitte einen Chat mit ihr über sdui.app. Danach kannst du ihr auch über diesen Client schreiben.</p>`:"")
       +(st.done?"":`<div id="usent" style="min-height:48px">${loading?'<div class="spin s"></div>':""}</div>`);
@@ -1668,7 +1684,21 @@ async function newChat(){
   };
   NCIO=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))more();},{rootMargin:"400px"});
   draw();more();
-  $("#us").oninput=e=>{q=e.target.value.trim();draw();};
+  const bar=srch=>{
+    const bx=$("#ncbar");if(!bx)return;
+    if(!srch){
+      bx.innerHTML=`<button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2>Neuer Chat</h2><button class="ib" id="nsb" aria-label="Suchen">${ic("search")}</button>`;
+      $("#nb").onclick=()=>go("chats");
+      $("#nsb").onclick=()=>bar(true);
+    }else{
+      bx.innerHTML=`<button class="ib" id="nb" aria-label="Suche schließen">${ic("left")}</button><input id="us" placeholder="Suchen" autocomplete="off" value="${esc(q)}"><button class="ib" id="nsx" aria-label="Leeren">${ic("x")}</button>`;
+      const inp=$("#us");inp.focus();
+      inp.oninput=e=>{q=e.target.value.trim();draw();};
+      $("#nsx").onclick=()=>{inp.value="";q="";draw();inp.focus();};
+      $("#nb").onclick=()=>{q="";draw();bar(false);};
+    }
+  };
+  bar(false);
   $("#ul").onclick=e=>{const r=e.target.closest("[data-u]");if(r)startChat(r.dataset.u,r.dataset.n);};
 }
 function newsCard(n){
