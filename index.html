@@ -554,6 +554,8 @@ html[data-theme=dark] .pvp{background:#fff}
 #off{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translate(-50%,-180%);z-index:120;background:#2b2b31;color:#fff;border-radius:999px;padding:8px 18px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none;white-space:nowrap}
 #off.in{transform:translate(-50%,0)}#off.ok{background:#1fa24a}
 @media(prefers-reduced-motion:reduce){#off{transition:none}}
+.tab .bd.dot{top:4px;left:calc(50% + 8px);min-width:0;width:11px;height:11px;padding:0;border-radius:50%;border:2px solid var(--card);box-sizing:content-box;color:transparent;font-size:0}
+.cr .bd{min-width:22px;height:22px;line-height:22px;padding:0 6px;box-sizing:border-box;text-align:center;font-size:12px;color:var(--on)}
 /* Dark Mode: restliche helle Flächen */
 html[data-theme=dark] :is(.clist,.gchip,.qd,.pvi,.pvz,.mcm,.l2bar,#login,.hint,.hint::before,#sres .card,.msg.svm,.pvn,.cp,.ph.sticky.hide:not(:has(>.row))){background:var(--surf);color:var(--tx)}
 html[data-theme=dark] .ph.sticky.hide>.row:first-child>h2,html[data-theme=dark] .ph.sticky.hide>h2,html[data-theme=dark] .ph.sticky.hide>.row:not(:first-child){background:var(--surf);color:var(--tx)}
@@ -918,10 +920,10 @@ function buildNav(){
   $("#nav").innerHTML='<h2>Sdui+</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();go(a.dataset.p);};
   const TABS=[["news","News","news"],["timetable","Stunden","cal"],["chats","Chats","chat"],["more","Mehr","more"]];
-  $("#tabbar").innerHTML=TABS.map(([k,l,i])=>`<a class="tab" data-t="${k}">${ic(i)}<span>${l}</span>${k==="chats"?'<i class="bd" hidden></i>':""}</a>`).join("");
+  $("#tabbar").innerHTML=TABS.map(([k,l,i])=>`<a class="tab" data-t="${k}">${ic(i)}<span>${l}</span>${k==="chats"?'<i class="bd dot" hidden></i>':""}</a>`).join("");
   $("#tabbar").onclick=e=>{const a=e.target.closest(".tab");if(!a)return;a.dataset.t==="more"?openMore():go(a.dataset.t);};
 }
-const setBadge=n=>{const b=document.querySelector(".tab .bd");if(b){b.textContent=n>99?"99+":n;b.hidden=!n;}};
+const setBadge=n=>{const b=document.querySelector(".tab .bd");if(b){b.textContent="";b.setAttribute("aria-label",n+" ungelesene Chats");b.hidden=!n;}};
 function updateBadge(){
   api_.chats(1,"",50).then(l=>{const mk=LS("sdui_unread"),ar=LS("sdui_arch");setBadge(l.filter(c=>{const i=cid(c);return !ar.includes(i)&&(unreadOf(c)>0||mk.includes(i));}).length);})
   .catch(()=>api_.activity().then(a=>setBadge(a.chat?.unread_count||0)).catch(()=>{}));
@@ -932,6 +934,7 @@ function route(){
   document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile","saved","settings"].includes(p))));
   document.body.classList.remove("inchat");if(typeof jdUpd==="function")jdUpd();
+  if(me&&!window.__fp){window.__fp=1;setTimeout(pollPush,1200);}
   if(me)updateBadge();
   if(p==="chats"&&location.hash==="#chats-new")return newChat();
   if(p==="news"&&location.hash.length>6)return newsDetail(location.hash.slice(6));
@@ -2078,27 +2081,35 @@ function showBanner(title,body,open){
   b.onclick=()=>{b.className="";if(open)open();};
 }
 async function pollPush(){
-  if(!me)return;
+  if(!me||pollPush.busy)return;
   const vis=!document.hidden;
   if(!vis&&!pushOn())return;
+  pollPush.busy=true;
   try{
-    const l=await api_.chats(1,"",30),old=nmap(),nm=old||{};
+    const l=await api_.chats(1,"",30),old=nmap(),nm=old||{},fresh=[];
     for(const c of l){
       const id=cid(c),raw=c.chat?.last_message||c.last_message;if(!raw)continue;
       const t=new Date(raw.created_at).getTime(),open=CH&&String(CH.id)===id&&vis&&document.body.classList.contains("inchat");
       if(old&&t>(nm[id]||0)&&!isDel(raw)&&raw.user?.id!==me.id&&unreadOf(c)>0&&!open){
         const name=c.meta?.displayname||c.code||"Neue Nachricht",who=raw.user?.meta?.displayname||"",txt=previewOf(raw);
-        if(vis){const post=c.chat?.can?.["post-message"]===0?0:1;showBanner(who?who+" @ "+name:name,txt,()=>openChat(id,post===1,name,c.id));}
+        if(vis)fresh.push({c,id,name,who,txt});
         else await showN(name,txt,id);
       }
       nm[id]=Math.max(nm[id]||0,t);
     }
     localStorage.setItem(NK,JSON.stringify(nm));
-    if(vis)updateBadge();
-  }catch(_){}
+    if(vis){
+      if(fresh.length===1){const f=fresh[0],post=f.c.chat?.can?.["post-message"]===0?0:1;showBanner(f.who?f.who+" @ "+f.name:f.name,f.txt,()=>openChat(f.id,post===1,f.name,f.c.id));}
+      else if(fresh.length>1)showBanner("Neue Nachrichten",fresh.length+" Chats mit neuen Nachrichten",()=>go("chats"));
+      const mk=LS("sdui_unread"),ar=LS("sdui_arch");
+      setBadge(l.filter(c=>{const i=cid(c);return !ar.includes(i)&&(unreadOf(c)>0||mk.includes(i));}).length);
+      if(fresh.length&&location.hash==="#chats"&&scrollY<120&&!document.querySelector(".menu:not([hidden])")&&!(document.activeElement&&document.activeElement.tagName==="INPUT"))chats();
+    }
+  }catch(_){}finally{pollPush.busy=false;}
 }
 setInterval(pollPush,20000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)pollPush();});
+addEventListener("online",()=>setTimeout(pollPush,800));
 function pushCard(){
   const ok="Notification"in window,on=pushOn();
   return `<div class="card"><b>Benachrichtigungen</b><p class="mu">${ok?"Neue Chat-Nachrichten werden als Mitteilung angezeigt, solange die Seite oder App im Hintergrund geöffnet ist. Bei komplett geschlossener App ist das ohne eigenen Server nicht möglich.":"Dein Browser unterstützt keine Benachrichtigungen. Auf dem iPhone musst du die Seite zuerst zum Home-Bildschirm hinzufügen."}</p>${ok?`<button class="btn" id="pushb">${on?"Benachrichtigungen ausschalten":"Benachrichtigungen aktivieren"}</button>`:""}</div>`;
