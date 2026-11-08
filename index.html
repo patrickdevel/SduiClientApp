@@ -890,7 +890,7 @@ function newsItem(n,i,o={}){
   <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
   <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
   <div class="mu">${D2(n.publish_at||n.created_at)}</div>
-  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${(()=>{const sv=findSurvey(n);return sv?surveyHtml(sv,!o.live):"";})()}${rcHtml(n,!o.live)}</div>`;
+  ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${(()=>{const sv=findSurvey(n);return sv?surveyHtml(sv,!o.live):(n.survey_uuid&&o.live?`<div class="sv" data-svlazy="${esc(n.survey_uuid)}"><div class="spin s"></div></div>`:"");})()}${rcHtml(n,!o.live)}</div>`;
 }
 async function news(){
   load();
@@ -1134,8 +1134,8 @@ function findSurvey(o,d=0){
 }
 const findSv=o=>isSv(o)?o:findSurvey(o);
 const svEnd=s=>s.meta?.ends_at??s.ends_at??s.meta?.end_date??s.end_date??s.meta?.expires_at??s.expires_at??null;
-const svOver=s=>{if(s.meta?.is_over??s.is_over)return true;const e=svEnd(s);return e?new Date(e).getTime()<Date.now():false;};
-const svMulti=s=>!!(s.meta?.is_multiple_choice??s.meta?.multiple_choice??s.meta?.is_multiple??s.meta?.allow_multiple??s.is_multiple_choice??s.multiple_choice)||(+(s.meta?.max_choices??s.meta?.max_votes??s.max_choices??1)>1);
+const svOver=s=>{if(s.meta?.is_over??s.is_over)return true;if(s.ended_at)return true;const e=svEnd(s);return e?new Date(e).getTime()<Date.now():false;};
+const svMulti=s=>!!(s.is_multi_answerable??s.meta?.is_multiple_choice??s.meta?.multiple_choice??s.meta?.is_multiple??s.meta?.allow_multiple??s.is_multiple_choice??s.multiple_choice)||(+(s.meta?.max_choices??s.meta?.max_votes??s.max_choices??1)>1);
 const svCnt=x=>{for(const k of ["votes_count","vote_count","votes","count","total_votes","answers_count","chosen_count"]){const v=x[k]??x.meta?.[k];if(typeof v==="number")return v;if(Array.isArray(v))return v.length;}return null;};
 const svPct=x=>{const v=x.percentage??x.percent??x.meta?.percentage??x.meta?.percent;return typeof v==="number"?Math.round(v):null;};
 const svCh=(s,x)=>{
@@ -1151,7 +1151,7 @@ const svCh=(s,x)=>{
   return false;
 };
 function surveyHtml(s,ro){
-  const o=svOpts(s),over=svOver(s),multi=svMulti(s),id=svId(s),lock=over||ro;
+  const o=svOpts(s),over=svOver(s),multi=svMulti(s),id=svId(s),lock=over||ro||s.can?.vote===0;
   SVC.set(String(id),s);console.debug("Umfrage",id,s);
   const cnt=o.map(svCnt),pct=o.map(svPct);
   const hasC=o.length>0&&cnt.every(c=>c!==null),tot=hasC?cnt.reduce((a,b)=>a+b,0):0;
@@ -1165,7 +1165,7 @@ function surveyHtml(s,ro){
   }).join("");
   const e=svEnd(s),ed=e?new Date(e):null;
   const meta=[over?"Umfrage beendet":(ed&&!isNaN(ed)?"Läuft bis "+ed.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" Uhr":""),
-    multi&&!over?"Mehrfachauswahl möglich":"",(s.meta?.is_anonymous??s.is_anonymous)?"Anonym":"",
+    multi&&!over?"Mehrfachauswahl möglich":"",(s.meta?.is_anonymous??s.is_anonymous)?"Anonym":"",s.is_freetext?"Freitext-Antworten werden hier nicht unterstützt":"",
     over&&!anyChosen?"Du hast nicht abgestimmt":""].filter(Boolean).join(" · ");
   return `<div class="sv" data-svid="${esc(id)}" data-svm="${multi?1:0}"><b>${ic("poll")} ${esc(svQ(s))}</b>${rows}${multi&&!lock?'<button type="button" class="btn svs" data-svs disabled>Abstimmen</button>':""}${meta?`<div class="mu" style="margin-top:8px">${esc(meta)}</div>`:""}</div>`;
 }
@@ -1215,18 +1215,20 @@ async function submitVote(wrap,ids){
 const RCK="sdui_rc_done";
 const rcLocal=()=>{try{return JSON.parse(localStorage.getItem(RCK)||"[]");}catch(_){return [];}};
 function rcInfo(n){
-  const id=n.id??n.uuid;let req=false,done=false;
-  for(const o of [n,n.meta||{}])for(const k of Object.keys(o)){
-    if(!/confirm/i.test(k))continue;
-    const v=o[k],isDoneKey=/confirmed|read_at|is_read/i.test(k)&&!/require|request|need/i.test(k);
-    if(v&&typeof v==="object"&&!Array.isArray(v)){
-      req=true;
-      for(const k2 of Object.keys(v))if(/confirmed|read_at|is_read|^read$/i.test(k2)&&v[k2])done=true;
-    }else if(isDoneKey){if(v){done=true;req=true;}}
-    else if(v)req=true;
+  const id=n.id??n.uuid,mm=n.meta||{},um=mm.userMeta||mm;
+  let req=n.is_confirmable===true||n.is_confirmable===1||!!um.confirm_uri||!!mm.confirm_uri;
+  let done=!!(um.is_confirmed||mm.is_confirmed);
+  const uri=typeof(um.confirm_uri||mm.confirm_uri)==="string"?(um.confirm_uri||mm.confirm_uri):null;
+  if(!req){ /* Fallback: unbekannte Feldnamen */
+    for(const o of [n,mm])for(const k of Object.keys(o)){
+      if(!/confirm/i.test(k)||/^can$/i.test(k))continue;
+      const v=o[k];
+      if(/confirmed|read_at|is_read/i.test(k)&&!/require|request|need/i.test(k)){if(v){done=true;req=true;}}
+      else if(v)req=true;
+    }
   }
   if(req&&!done&&rcLocal().includes(String(id)))done=true;
-  return {req,done,id};
+  return {req,done,id,uri};
 }
 function rcHtml(n,ro){
   const i=rcInfo(n);if(!i.req)return"";
@@ -1235,13 +1237,14 @@ function rcHtml(n,ro){
            :`<button type="button" class="btn rcb" data-rc="${esc(i.id)}"${ro?" disabled":""}>Lesebestätigung senden</button>`)+`</div>`;
 }
 /* Der genaue Endpunkt ist nicht öffentlich dokumentiert: bekannte Varianten der Reihe nach probieren, die funktionierende merken */
-async function rcSend(id){
+async function rcSend(id,uri){
   const base="channels/news/"+encodeURIComponent(id)+"/";
   const paths=["confirm","read-confirmation","confirmation","confirmations","confirm-read","read","reading-confirmation"],methods=["POST","PUT","PATCH"];
   let tries=[];for(const pa of paths)for(const me of methods)tries.push([me,pa]);
   const m=localStorage.getItem("sdui_rc_ep");
   if(m){const [me,pa]=m.split(" ");tries=[[me,pa],...tries.filter(t=>!(t[0]===me&&t[1]===pa))];}
   const log=[];
+  if(uri){for(const method of ["PUT","POST"]){try{await api(uri,{method,body:{}});return;}catch(e){log.push(method+" "+uri+" → "+(e.status||"?")+" "+e.message);}}}
   for(const [method,path] of tries){
     try{await api(base+path,{method,body:{}});localStorage.setItem("sdui_rc_ep",method+" "+path);return;}
     catch(e){
@@ -1258,7 +1261,7 @@ document.addEventListener("click",async e=>{
     const card=b.closest(".ncard"),id=b.dataset.rc;if(!card)return;
     b.disabled=true;b.textContent="Wird gesendet …";
     try{
-      await rcSend(id);
+      await rcSend(id,rcInfo(NEWS[+card.dataset.ni]||{}).uri);
       const l=rcLocal();if(!l.includes(String(id))){l.push(String(id));localStorage.setItem(RCK,JSON.stringify(l.slice(-200)));}
       try{await refreshNewsCard(card);}catch(_){const n=NEWS[+card.dataset.ni];if(n)card.querySelector(".rc").outerHTML=rcHtml(n,false);}
     }catch(x){
