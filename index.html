@@ -496,7 +496,57 @@ body.inchat::before{display:none}
 .ncx .i2{opacity:0;transform:rotate(-90deg)}
 .ncbar.open .ncx .i1{opacity:0;transform:rotate(90deg)}
 .ncbar.open .ncx .i2{opacity:1;transform:none}
+
+/* ===== Themes: Akzent, Dark Mode, Schriftgröße ===== */
+:root{--on:#fff;--fs:1;--surf:#fff;--surf2:#f0f0f2;--page:#f6f6f8;--t1:#fdecf2;--t2:#fbe9ef;--t3:#fdf1f5;--tb:#f6d3df}
+main,nav,#tabbar,.sh-box,.mbox{zoom:var(--fs)}
+.sh-box.tall{min-height:calc(88dvh/var(--fs));max-height:calc(88dvh/var(--fs))}
+.sh-box{max-height:calc(85dvh/var(--fs))}
+body.inchat main{min-height:calc(100dvh/var(--fs))}
+.btn,.pill.on,.kp,.bd,.logo span{color:var(--on)}
+nav a.on,.msg.me,.ib.pl,.irow .ic{background:var(--t1)}
+.dcm{background:var(--t2)}.shared{background:var(--t3)}
+.msg.me{border-color:var(--tb)}
+.tab.on .ic{fill:color-mix(in srgb,var(--ac) 20%,transparent)}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0}
+.setrow+.setrow{border-top:1px solid var(--bd)}
+.seg{display:flex;background:var(--surf2);border-radius:14px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;color:var(--tx);padding:9px 6px;border-radius:11px;cursor:pointer;font-weight:500}
+.seg button.on{background:var(--ac);color:var(--on);font-weight:600}
+.swa{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0}
+.swa button{width:42px;height:42px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:var(--c);box-shadow:0 0 0 1px var(--bd)}
+.swa button.on{border-color:var(--card);box-shadow:0 0 0 3px var(--c)}
+input.cpick{width:42px;height:42px;padding:0;margin:0;border-radius:50%;border:0;background:none;cursor:pointer}
+.prev{border-radius:16px;padding:14px;background:var(--bg);margin-top:10px}
+.prev .row{margin-top:8px}
+html[data-theme=dark]{color-scheme:dark;--bg:#121216;--card:#1c1c22;--tx:#ececf1;--mu:#9d9da8;--bd:#2d2d35;--surf:#1c1c22;--surf2:#26262e;--page:#121216;--t1:#3a1c29;--t2:#34202b;--t3:#2c1f26;--tb:#4a2a39}
+html[data-theme=dark] body{background:var(--page)}
+html[data-theme=dark] :is(.gw,.crow,.fchip,.del,.menu,.dmenu,.cp,#bnr,.mbox,.pvn,.sh-box,.ls,.pill,.msg,.cin input:not([hidden]),input:focus,#tabbar){background:var(--surf);color:var(--tx)}
+html[data-theme=dark] .msg.me{background:var(--t1)}
+html[data-theme=dark] :is(input,.mb select,.sbox,.av,.chip,.dbtn button,.cph button,.mh .ib,.les,.dsep span,.ph.sticky.hide>.row){background:var(--surf2);color:var(--tx)}
+html[data-theme=dark] :is(.chead,.cin){background:var(--page)}
+html[data-theme=dark] .ph.sticky.hide>.row,html[data-theme=dark] .ph.sticky.hide>h2{background:var(--surf)}
+html[data-theme=dark] .ph.sticky.hide>.row:first-child{background:transparent}
+html[data-theme=dark] body::before{background:linear-gradient(rgba(18,18,22,.95),rgba(18,18,22,0))}
+html[data-theme=dark] .pvt::before{background:rgba(18,18,22,.8)}
+html[data-theme=dark] .ls.SUBSTITUTION{background:#2b2418}
+html[data-theme=dark] .dic{background:color-mix(in srgb,var(--cc) 22%,#1c1c22)}
+html[data-theme=dark] .blk{background:color-mix(in srgb,var(--c) 24%,#1c1c22)}
+html[data-theme=dark] .ad{background:color-mix(in srgb,var(--c) 26%,#1c1c22)}
+html[data-theme=dark] .gc{background:repeating-linear-gradient(to bottom,#2d2d35 0 1px,transparent 1px var(--hp))}
+html[data-theme=dark] nav a:hover:not(.on){background:var(--surf2)}
+html[data-theme=dark] .ib.gr,html[data-theme=dark] .opc b,html[data-theme=dark] .pill.x{color:var(--tx)}
+html[data-theme=dark] .sh-grab{background:#3a3a44}
+html[data-theme=dark] .intro{background:#16283a;color:#8cc8ff}
+html[data-theme=dark] .chip{background:var(--surf2)}
+html[data-theme=dark] .chip.a{background:#17323f;color:#8fd0f0}
+html[data-theme=dark] .dsep.un span{background:#33281a;color:#f0b062}
+html[data-theme=dark] .ildw.ld{background:#26262e}
+html[data-theme=dark] .pvp{background:#fff}
 </style>
+<script>
+(function(){try{var t=JSON.parse(localStorage.getItem("sdui_theme")||"{}");window.__th=t}catch(e){window.__th={}}})();
+</script>
 </head>
 <body>
 <div id="login">
@@ -538,6 +588,7 @@ let me=null;
 const $=s=>document.querySelector(s);
 
 const ICONS={
+gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
 reply:'<path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
 fwd:'<path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',
@@ -802,7 +853,7 @@ function closePdf(now){
 }
 addEventListener("keydown",e=>{if(e.key==="Escape"&&PV)closePdf();});
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
-const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user"};
+const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user",settings:"gear"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 async function api(path,{method="GET",params,body,quiet}={}){
@@ -832,7 +883,7 @@ const api_ = {
   vote:(id,vote)=>api(`channels/surveys/${id}/vote`,{method:"PUT",body:vote})
 };
 
-const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil"};
+const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil",settings:"Einstellungen"};
 function buildNav(){
   $("#nav").innerHTML='<h2>Sdui Web</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();go(a.dataset.p);};
@@ -849,12 +900,12 @@ function go(k){location.hash==="#"+k?route():location.hash=k;}
 function route(){
   const p=(location.hash.slice(1)||"news").split("-")[0];
   document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile"].includes(p))));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile","settings"].includes(p))));
   document.body.classList.remove("inchat");
   if(me)updateBadge();
   if(p==="chats"&&location.hash==="#chats-new")return newChat();
   if(p==="news"&&location.hash.length>6)return newsDetail(location.hash.slice(6));
-  ({news,timetable,chats,cloud,courses,profile,notifications}[p]||news)();
+  ({news,timetable,chats,cloud,courses,profile,settings,notifications}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
 
@@ -901,9 +952,9 @@ async function news(){
   load();
   try{
     npage=1;NEWS=await api_.news(1);
-    const mi=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
+    const mi=[["user","Account & Einstellungen","profile"],["gear","Design & Schrift","settings"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
     V(`<div class="ph sticky"><h2>News</h2><div class="row" style="gap:0"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}<i class="bd" id="bellb" hidden></i></button><button class="ib gr" data-act="info" aria-label="Info">${ic("info")}</button>
-      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
+      <div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${mi.map(([i,t,g],k)=>`<div class="mi${k===4?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>
       <label class="sbox">${ic("search")}<input id="ns" placeholder="News suchen" autocomplete="off"></label>`+
       `<div id="nl">${NEWS.map((n,i)=>newsItem(n,i,{live:1})).join("")}</div>`+(NEWS.length?"":'<p class="mu">Keine News.</p>')+'<div id="nmore"></div>');
     const filt=()=>{const q=($("#ns").value||"").trim().toLowerCase();document.querySelectorAll(".ncard").forEach(c=>c.hidden=!!q&&!c.textContent.toLowerCase().includes(q));};
@@ -1447,7 +1498,7 @@ function colorPicker(l){
   document.body.appendChild(bg);
 }
 function openMore(){
-  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["cloud","cloud","Cloud"],["courses","cap","Kurse"],["profile","user","Profil"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
+  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["cloud","cloud","Cloud"],["courses","cap","Kurse"],["profile","user","Profil"],["settings","gear","Einstellungen"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
   $("#sheet").classList.add("open");
 }
 $("#sheet").onclick=e=>{
@@ -1460,8 +1511,8 @@ $("#view").addEventListener("click",e=>{const c=e.target.closest(".ls,.blk,.ad")
 
 /* CHATS */
 const ini=n=>(String(n).match(/[A-Za-zÄÖÜäöü]{2}/)||["?"])[0].toUpperCase();
-const MENU=[["user","Account & Einstellungen","profile"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
-const hdr=(t,extra,info)=>`<div class="ph sticky"><div class="row" style="gap:10px;flex-wrap:nowrap"><h2>${t}</h2>${extra||""}</div><div class="row" style="gap:0;flex-wrap:nowrap"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}</button><button class="ib gr" data-act="${info}" aria-label="Info">${ic("info")}</button><div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${MENU.map(([i,t,g],k)=>`<div class="mi${k===3?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
+const MENU=[["user","Account & Einstellungen","profile"],["gear","Design & Schrift","settings"],["group","Meine Gruppen","courses"],["user","Account wechseln","out"],["out","Ausloggen","out"]];
+const hdr=(t,extra,info)=>`<div class="ph sticky"><div class="row" style="gap:10px;flex-wrap:nowrap"><h2>${t}</h2>${extra||""}</div><div class="row" style="gap:0;flex-wrap:nowrap"><button class="ib gr" data-act="bell" aria-label="Benachrichtigungen">${ic("bell")}</button><button class="ib gr" data-act="${info}" aria-label="Info">${ic("info")}</button><div class="mw"><button class="ib gr" data-act="menu" aria-label="Menü">${ic("menu")}</button><div class="menu" id="menu" hidden>${MENU.map(([i,t,g],k)=>`<div class="mi${k===4?" rd":""}" data-mg="${g}">${ic(i)}<span>${t}</span></div>`).join("")}</div></div></div></div>`;
 function seenMap(){try{return JSON.parse(localStorage.getItem("sdui_seen")||"{}")||{};}catch(_){return{};}}
 function seenCnt(){try{return JSON.parse(localStorage.getItem("sdui_seenc")||"{}")||{};}catch(_){return{};}}
 function markSeen(id,t,cnt){if(!t)return;const m=seenMap();if((m[id]||0)<t){m[id]=t;const k=seenCnt();if(cnt!=null)k[id]=cnt;try{localStorage.setItem("sdui_seen",JSON.stringify(m));localStorage.setItem("sdui_seenc",JSON.stringify(k));}catch(_){}}}
@@ -2087,6 +2138,53 @@ async function courses(){
     const c=await api_.courses();
     V(`<h2>Kurse</h2>`+c.map(x=>`<div class="card"><b>${esc(x.meta?.displayname||x.name)}</b><br><span class="mu">${esc(x.description||"")}</span></div>`).join(""));
   }catch(e){fail(e);}
+}
+
+/* EINSTELLUNGEN / THEME */
+const TH_DEF={mode:"system",ac:"#c9285f",fs:1};
+let TH=Object.assign({},TH_DEF,window.__th||{});
+const ACS=[["#c9285f","Magenta"],["#2563eb","Blau"],["#16a34a","Grün"],["#ea580c","Orange"],["#7c3aed","Violett"],["#0d9488","Türkis"]];
+const hexRgb=h=>{h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");return[0,2,4].map(i=>parseInt(h.substr(i,2),16))};
+const lum=h=>{const[r,g,b]=hexRgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*r+.7152*g+.0722*b};
+const mixW=(h,p)=>"#"+hexRgb(h).map(v=>Math.round(v+(255-v)*p).toString(16).padStart(2,"0")).join("");
+const isDark=()=>TH.mode==="dark"||(TH.mode==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);
+function applyTheme(){
+  const d=isDark(),r=document.documentElement;
+  r.dataset.theme=d?"dark":"light";
+  let ac=/^#[0-9a-f]{6}$/i.test(TH.ac)?TH.ac:TH_DEF.ac;
+  if(d&&lum(ac)<.18)ac=mixW(ac,.45);
+  r.style.setProperty("--ac",ac);
+  r.style.setProperty("--on",lum(ac)>.5?"#1a1a1f":"#fff");
+  r.style.setProperty("--fs",String(TH.fs));
+  const T=["--t1","--t2","--t3","--tb"];
+  if(!d&&ac.toLowerCase()===TH_DEF.ac)T.forEach(k=>r.style.removeProperty(k));
+  else{const b=d?"#1c1c22":"#fff",x=d?[22,19,15,32]:[12,10,7,25];T.forEach((k,i)=>r.style.setProperty(k,`color-mix(in srgb,${ac} ${x[i]}%,${b})`));}
+  let m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement("meta");m.name="theme-color";document.head.appendChild(m);}
+  m.content=d?"#121216":"#f6f6f8";
+}
+function setTheme(p){TH=Object.assign(TH,p);try{localStorage.setItem("sdui_theme",JSON.stringify(TH))}catch(_){}applyTheme();}
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(TH.mode==="system")applyTheme();});
+function settings(){
+  document.body.classList.remove("inchat");
+  const seg=(id,opts,cur)=>`<div class="seg" id="${id}">${opts.map(([v,l])=>`<button data-v="${v}" class="${String(cur)===String(v)?"on":""}">${l}</button>`).join("")}</div>`;
+  const custom=!ACS.some(a=>a[0].toLowerCase()===TH.ac.toLowerCase());
+  V(`<h2>Einstellungen</h2>
+  <div class="card"><b>Design</b><p class="mu" style="margin:4px 0 10px">Hell, dunkel oder automatisch passend zum Gerät.</p>
+    ${seg("s-mode",[["light","Hell"],["dark","Dunkel"],["system","Automatisch"]],TH.mode)}</div>
+  <div class="card"><b>Akzentfarbe</b><p class="mu" style="margin:4px 0 6px">Gilt für Buttons, Navigation und Hervorhebungen.</p>
+    <div class="swa" id="s-ac">${ACS.map(([c,n])=>`<button style="--c:${c}" data-c="${c}" title="${n}" aria-label="${n}" class="${!custom&&TH.ac.toLowerCase()===c?"on":""}"></button>`).join("")}
+    <label class="cpl" style="display:flex;align-items:center;gap:8px"><input type="color" class="cpick" id="s-cp" value="${esc(TH.ac)}" aria-label="Eigene Farbe"><span class="mu">Eigene Farbe</span></label></div></div>
+  <div class="card"><b>Schriftgröße</b><p class="mu" style="margin:4px 0 10px">Vergrößert Text und Oberfläche.</p>
+    ${seg("s-fs",[[1,"Normal"],[1.12,"Groß"],[1.25,"Sehr groß"]],TH.fs)}</div>
+  <div class="card"><b>Vorschau</b><div class="prev"><div class="who">Beispielname</div><div>So sehen Nachrichten und Texte aus.</div><div class="row"><button class="btn">Button</button><button class="btn ghost">Zweitaktion</button><span class="pill on">Aktiv</span></div></div></div>
+  <button class="btn ghost" id="s-rs">Zurücksetzen</button>`);
+  $("#s-mode").onclick=e=>{const b=e.target.closest("button");if(b){setTheme({mode:b.dataset.v});settings();}};
+  $("#s-fs").onclick=e=>{const b=e.target.closest("button");if(b){setTheme({fs:+b.dataset.v});settings();}};
+  $("#s-ac").onclick=e=>{const b=e.target.closest("button");if(b){setTheme({ac:b.dataset.c});settings();}};
+  $("#s-cp").oninput=e=>setTheme({ac:e.target.value});
+  $("#s-cp").onchange=()=>settings();
+  $("#s-rs").onclick=()=>{setTheme(Object.assign({},TH_DEF));settings();};
 }
 
 /* PROFILE */
