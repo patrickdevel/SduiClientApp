@@ -546,6 +546,14 @@ html[data-theme=dark] .chip.a{background:#17323f;color:#8fd0f0}
 html[data-theme=dark] .dsep.un span{background:#33281a;color:#f0b062}
 html[data-theme=dark] .ildw.ld{background:#26262e}
 html[data-theme=dark] .pvp{background:#fff}
+.nact .ib.on{color:var(--ac)}.nact .ib.on .ic{fill:currentColor}
+#jd{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:15;width:44px;height:44px;border-radius:50%;border:0;background:var(--surf);color:var(--ac);box-shadow:0 2px 12px rgba(20,20,40,.22);display:flex;align-items:center;justify-content:center;cursor:pointer}
+#jd[hidden],#jd i[hidden]{display:none}
+#jd .ic{width:22px;height:22px}
+#jd i{position:absolute;top:-6px;right:-4px;background:var(--ac);color:var(--on);border-radius:999px;font-size:11px;font-style:normal;font-weight:600;min-width:20px;height:20px;line-height:20px;padding:0 5px;text-align:center}
+#off{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translate(-50%,-180%);z-index:120;background:#2b2b31;color:#fff;border-radius:999px;padding:8px 18px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none;white-space:nowrap}
+#off.in{transform:translate(-50%,0)}#off.ok{background:#1fa24a}
+@media(prefers-reduced-motion:reduce){#off{transition:none}}
 /* Dark Mode: restliche helle Flächen */
 html[data-theme=dark] :is(.clist,.gchip,.qd,.pvi,.pvz,.mcm,.l2bar,#login,.hint,.hint::before,#sres .card,.msg.svm,.pvn,.cp,.ph.sticky.hide:not(:has(>.row))){background:var(--surf);color:var(--tx)}
 html[data-theme=dark] .ph.sticky.hide>.row:first-child>h2,html[data-theme=dark] .ph.sticky.hide>h2,html[data-theme=dark] .ph.sticky.hide>.row:not(:first-child){background:var(--surf);color:var(--tx)}
@@ -609,6 +617,7 @@ let me=null;
 const $=s=>document.querySelector(s);
 
 const ICONS={
+bm:'<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
 gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
 reply:'<path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
@@ -874,7 +883,7 @@ function closePdf(now){
 }
 addEventListener("keydown",e=>{if(e.key==="Escape"&&PV)closePdf();});
 function ic(n){return `<svg class="ic" viewBox="0 0 24 24">${ICONS[n]||""}</svg>`}
-const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user",settings:"gear"};
+const NAVIC={news:"news",timetable:"cal",chats:"chat",cloud:"cloud",courses:"cap",profile:"user",saved:"bm",settings:"gear"};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 async function api(path,{method="GET",params,body,quiet}={}){
@@ -904,7 +913,7 @@ const api_ = {
   vote:(id,vote)=>api(`channels/surveys/${id}/vote`,{method:"PUT",body:vote})
 };
 
-const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil",settings:"Einstellungen"};
+const pages={news:"News",timetable:"Stundenplan",chats:"Chats",cloud:"Cloud",courses:"Kurse",profile:"Profil",saved:"Gemerkt",settings:"Einstellungen"};
 function buildNav(){
   $("#nav").innerHTML='<h2>Sdui+</h2>'+Object.entries(pages).map(([k,v])=>`<a data-p="${k}">${ic(NAVIC[k])} ${v}</a>`).join("")+'<a id="out">'+ic("out")+' Abmelden</a>';
   $("#nav").onclick=e=>{const a=e.target.closest("a");if(!a)return;if(a.id==="out")return logout();go(a.dataset.p);};
@@ -921,12 +930,12 @@ function go(k){location.hash==="#"+k?route():location.hash=k;}
 function route(){
   const p=(location.hash.slice(1)||"news").split("-")[0];
   document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p===p));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile","settings"].includes(p))));
-  document.body.classList.remove("inchat");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t===p||(t.dataset.t==="more"&&["cloud","courses","profile","saved","settings"].includes(p))));
+  document.body.classList.remove("inchat");if(typeof jdUpd==="function")jdUpd();
   if(me)updateBadge();
   if(p==="chats"&&location.hash==="#chats-new")return newChat();
   if(p==="news"&&location.hash.length>6)return newsDetail(location.hash.slice(6));
-  ({news,timetable,chats,cloud,courses,profile,settings,notifications}[p]||news)();
+  ({news,timetable,chats,cloud,courses,profile,saved:savedPage,settings,notifications}[p]||news)();
 }
 window.addEventListener("hashchange",()=>token&&route());
 
@@ -965,7 +974,7 @@ function newsItem(n,i,o={}){
   const A=k=>o.live?` data-act="${k}"`:"",ti=o.title??n.title;
   return `<div class="card ncard" data-ni="${i}">${n.is_pinned?`<div class="pinl">${ic("pin")} Vom Autor fixiert <a href="#"${A("pin")}>Was heißt das?</a></div>`:""}
   <div class="nhead"><div class="chips"><span class="chip a">${esc(n.user?.meta?.displayname||"")}</span>${ic("right")}<span class="chip">${esc(grpOf(n))}</span></div>
-  <div class="nact"><button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
+  <div class="nact">${o.live?`<button class="ib${isSaved(n)?" on":""}"${A("save")} aria-label="Merken">${ic("bm")}</button>`:""}<button class="flagb"${A("tr")} aria-label="Übersetzen"><span class="flag"></span></button><div class="mw"><button class="ib"${A("more")} aria-label="Mehr">${ic("more")}</button>${o.live?`<div class="menu mm" hidden><div class="mi" data-nm="copy">${ic("copy")}<span>Link kopieren</span></div><div class="mi" data-nm="detail">${ic("news")}<span>Zur News Detailseite</span></div></div>`:""}</div></div></div>
   <div class="mu">${D2(n.publish_at||n.created_at)}</div>
   ${ti?`<h3 style="margin:8px 0">${esc(ti)}</h3>`:""}<div class="news-body">${o.html??bodyOf(n)}</div>${attHtml(n.attachments)}${(()=>{const sv=findSurvey(n);return sv?surveyHtml(sv,!o.live):(n.survey_uuid&&o.live?`<div class="sv" data-svlazy="${esc(n.survey_uuid)}"><div class="spin s"></div></div>`:"");})()}${rcHtml(n,!o.live)}</div>`;
 }
@@ -1021,6 +1030,7 @@ document.addEventListener("click",e=>{
   else if(k==="newchat")location.hash="chats-new";
   else if(k==="tinfo")modal("Stundenplan","<p>Hier siehst du deine Stunden der Woche. Entfallene Stunden sind durchgestrichen, Vertretungen farbig markiert. Ganztägige Termine laufen als Spalte neben den Stunden. Tippe eine Stunde für Details.</p>",`<div class="mf"><button class="btn" data-x style="width:100%">Okay, zurück</button></div>`);
   else if(k==="pin")modal("Fixierte News",'<p>Eine fixierte News bleibt oben in der Liste, bis der Autor sie wieder löst.</p>');
+  else if(k==="save"&&n){const r=toggleSaved(n);if(r===null)return;b.classList.toggle("on",r);if(!r&&location.hash==="#saved")savedPage();}
   else if(k==="tr"&&n)trModal(n);
 });
 /* Header beim Runterscrollen ausblenden, beim Hochscrollen wieder einblenden */
@@ -1463,7 +1473,7 @@ function drawTT(mon,upd,partial){
   };
   const mo=mon.toLocaleDateString("de-DE",{month:"short"});
   const inner=`${upd?`<div class="pillw">Stand ${esc(D2(upd))} Uhr</div>`:""}
-  <div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin:4px 0 2px"><button class="ib gr" id="pw_" aria-label="Vorherige Woche">${ic("left")}</button>${weekOff?'<button class="btn ghost" id="cw">Heute</button>':""}<button class="ib gr" id="nw" aria-label="Nächste Woche">${ic("right")}</button></div>
+  <div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin:4px 0 2px"><button class="ib gr" id="pw_" aria-label="Vorherige Woche">${ic("left")}</button><button class="btn ghost" id="cw"${weekOff?"":" disabled"}>Heute</button><button class="ib gr" id="nw" aria-label="Nächste Woche">${ic("right")}</button></div>
   <div class="gw"><div class="gh"><div class="gx"></div>${days.map((x,i)=>`<div class="gd ${x.d.toDateString()===now.toDateString()?"today":""}"><em class="mn">${i===0?mo:""}</em><small>${x.n}</small><b>${String(x.d.getDate()).padStart(2,"0")}</b></div>`).join("")}</div>
   <div class="gb" style="height:${H}px"><div class="gx">${axis}</div>${days.map(x=>`<div class="gc">${col(x)}</div>`).join("")}</div></div>
   ${me?.grade?.name?`<div class="gchip">${ic("user")}<span>${esc(me.grade.name)}</span></div>`:""}`;
@@ -1519,7 +1529,7 @@ function colorPicker(l){
   document.body.appendChild(bg);
 }
 function openMore(){
-  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["cloud","cloud","Cloud"],["courses","cap","Kurse"],["profile","user","Profil"],["settings","gear","Einstellungen"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
+  $("#sh-c").innerHTML=`<h3 style="margin:0 0 6px">Mehr</h3>`+[["cloud","cloud","Cloud"],["courses","cap","Kurse"],["profile","user","Profil"],["saved","bm","Gemerkt"],["settings","gear","Einstellungen"]].map(([k,i,t])=>`<div class="srow more" data-go="${k}">${ic(i)}<div>${t}</div></div>`).join("")+`<div class="srow more" data-out="1">${ic("out")}<div>Abmelden</div></div>`;
   $("#sheet").classList.add("open");
 }
 $("#sheet").onclick=e=>{
@@ -2207,6 +2217,75 @@ function settings(){
   $("#s-cp").onchange=()=>settings();
   $("#s-rs").onclick=()=>{setTheme(Object.assign({},TH_DEF));settings();};
 }
+
+/* GEMERKT / WISCHEN / NACH UNTEN / OFFLINE */
+const SV_K="sdui_saved",bmId=n=>String(n.id??n.uuid);
+const savedList=()=>{try{return JSON.parse(localStorage.getItem(SV_K)||"[]")}catch(_){return[]}};
+const isSaved=n=>savedList().some(x=>bmId(x)===bmId(n));
+function toggleSaved(n){
+  const l=savedList(),i=l.findIndex(x=>bmId(x)===bmId(n));
+  if(i>=0)l.splice(i,1);else l.unshift(n);
+  try{localStorage.setItem(SV_K,JSON.stringify(l.slice(0,60)));}catch(_){alert("Der Speicher ist voll. Entferne zuerst ältere gemerkte News.");return null;}
+  return i<0;
+}
+function savedPage(){
+  document.body.classList.remove("inchat");
+  const l=savedList();NEWS=l.slice();
+  V(hdr("Gemerkt","","info")+(l.length?`<div id="nl">${l.map((n,i)=>newsItem(n,i,{live:1})).join("")}</div>`:`<div class="empty"><div class="okc" style="background:var(--t1);color:var(--ac)">${ic("bm")}</div><b>Noch nichts gemerkt</b><p class="mu">Tippe bei einer News auf das Lesezeichen, um sie hier zu speichern.</p></div>`));
+}
+/* Stundenplan: Wischen = Woche wechseln */
+(function(){
+  let sx=0,sy=0,t0=0,ok=false;const v=$("#view");
+  v.addEventListener("touchstart",e=>{
+    const g=e.target.closest(".gw");
+    ok=!!e.target.closest("#ttw")&&e.touches.length===1&&!(g&&g.scrollWidth>g.clientWidth+2);
+    const t=e.touches[0];sx=t.clientX;sy=t.clientY;t0=Date.now();
+  },{passive:true});
+  v.addEventListener("touchend",e=>{
+    if(!ok)return;ok=false;
+    const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*.6||Date.now()-t0>700)return;
+    weekOff=Math.max(-52,Math.min(52,weekOff+(dx<0?1:-1)));timetable(true);
+  },{passive:true});
+})();
+/* Chat: Nach-unten-Button mit Zähler + neue Nachrichten nachladen */
+const jd=document.createElement("button");jd.id="jd";jd.hidden=true;jd.setAttribute("aria-label","Nach unten springen");jd.innerHTML=ic("down")+'<i id="jdn" hidden></i>';document.body.appendChild(jd);
+const nearBottom=()=>document.documentElement.scrollHeight-innerHeight-scrollY<250;
+function jdUpd(){
+  const inC=document.body.classList.contains("inchat")&&CH;
+  const far=!!inC&&!nearBottom();jd.hidden=!far;
+  if(inC&&!far)CH.newCnt=0;
+  const n=(inC&&CH.newCnt)||0,b=$("#jdn");b.hidden=!n;b.textContent=n>99?"99+":n;
+}
+addEventListener("scroll",jdUpd,{passive:true});
+jd.onclick=()=>{if(CH)CH.newCnt=0;scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});};
+setInterval(async()=>{
+  const c=CH;
+  if(!c||!document.body.classList.contains("inchat")||document.hidden||!navigator.onLine||c.busy||c.polling||!me)return;
+  c.polling=true;
+  try{
+    const l=await api_.msgs(c.id,1);
+    if(c!==CH||!document.body.classList.contains("inchat"))return;
+    const ids=new Set(c.msgs.map(x=>x.uuid));
+    const add=l.filter(x=>!ids.has(x.uuid)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    const ms=$("#ms");if(!add.length||!ms)return;
+    const was=nearBottom();c.msgs=c.msgs.concat(add);
+    ms.insertAdjacentHTML("beforeend",add.map(x=>msgHtml(x,x.user?.id===me.id,false)).join(""));
+    ms.querySelectorAll("[data-nid]").forEach(async el=>{try{el.outerHTML=newsCard(await api_.newsById(el.dataset.nid));}catch(_){el.outerHTML=newsCard(null);}});
+    if(was)setTimeout(()=>scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"}),50);
+    else{c.newCnt=(c.newCnt||0)+add.filter(x=>x.user?.id!==me.id).length;jdUpd();}
+  }catch(_){}finally{c.polling=false;}
+},15000);
+/* Offline-Hinweis */
+const offEl=document.createElement("div");offEl.id="off";offEl.setAttribute("role","status");document.body.appendChild(offEl);
+let offT;
+function netState(){
+  clearTimeout(offT);
+  if(!navigator.onLine){offEl.className="in";offEl.textContent="Keine Verbindung";}
+  else if(offEl.classList.contains("in")&&!offEl.classList.contains("ok")){offEl.className="in ok";offEl.textContent="Wieder verbunden";offT=setTimeout(()=>{offEl.className="";},2200);}
+}
+addEventListener("offline",netState);addEventListener("online",netState);
+if(!navigator.onLine)netState();
 
 /* PROFILE */
 async function profile(){
