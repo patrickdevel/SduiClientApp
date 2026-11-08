@@ -475,6 +475,14 @@ body.inchat::before{display:none}
 .btn.rcb:disabled{opacity:.6;cursor:default}
 .msg.svm{background:var(--card,#fff);color:var(--tx);width:92%;max-width:92%;align-self:flex-start}
 .msg.svm .sv{margin-top:0}
+.chead .ct{flex:1;min-width:0}
+.ct b,.ct .mu{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chead .av{flex:none}
+.ib.cld{flex:none;width:44px;height:44px;border-radius:50%;background:#fbe9ef;color:var(--ac);display:inline-flex;align-items:center;justify-content:center}
+.ib.cld .ic{width:22px;height:22px}
+.cr2 .cm{min-width:0;flex:1}
+.cr2 .cn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow>div:nth-child(2){min-width:0}
 </style>
 </head>
 <body>
@@ -1461,8 +1469,10 @@ function cav(n,locked){
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]");}catch(_){return[];}};
 const tog=(k,id)=>{const a=LS(k),i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);localStorage.setItem(k,JSON.stringify(a));};
 const cid=c=>String(c.chat?.id||c.id);
+const CLOUDOF={};
 function chatRow(c,inact){
   const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
+  {const cc=c.cloud?.id||c.cloud_id;if(cc){CLOUDOF[id]=cc;CLOUDOF[String(c.id)]=cc;}}
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
   const txt=previewOf(lm),un=unreadOf(c);UNR[id]=c.chat?.unread_count??c.unread_count??0;UNA[id]=un;
@@ -1740,11 +1750,28 @@ function drawChat(scroll){
     const sys=isSys(x)||isDel(x),cont=!brk&&!sys&&prev&&prev.user?.id&&prev.user.id===x.user?.id&&!isDel(prev)&&!isSys(prev);
     h+=msgHtml(x,mine,cont);prev=x;
   });
-  V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div></div>
+  V(`<div class="chead"><button class="ib" id="bk">${ic("left")}</button><div class="av">${ini(CH.name)}</div><div class="ct" id="ci"><b>${esc(CH.name)}</b><div class="mu">Hier klicken für Chat Info</div></div><button class="ib cld" id="cld" aria-label="Cloud">${ic("cloud")}</button></div>
   ${CH.done?"":'<div id="older" style="min-height:2px"></div>'}<div id="ms">${h}</div>
   ${CH.canPost?`<div id="fchip"></div><div class="cin"><button class="ib pl" id="plus">${ic("plus")}</button><input type="file" id="fi" hidden><input id="mi" placeholder="Neue Nachricht"><button class="ib pl" id="sd">${ic("send")}</button></div>`:`<div class="card mu">${ic("lock")} Einweg-Chat: Hier können nur Admins schreiben.</div>`}`);
   if(keep&&$("#mi"))$("#mi").value=keep;
   $("#bk").onclick=()=>{const nt=Math.max(0,...CH.msgs.map(x=>new Date(x.created_at).getTime()||0));markSeen(String(CH.id),nt,UNR[String(CH.id)]);chats();setTimeout(updateBadge,300);};
+  $("#cld").onclick=async()=>{
+    const bt=$("#cld");bt.disabled=true;
+    try{
+      let id=CLOUDOF[String(CH.id)]??CLOUDOF[String(CH.ch)];
+      if(!id){
+        for(const q of [CH.name,""]){
+          const l=await api_.chats(1,q,50);
+          const c=l.find(c=>[String(cid(c)),String(c.id)].some(v=>v===String(CH.id)||v===String(CH.ch)));
+          if(c){id=c.cloud?.id||c.cloud_id;break;}
+        }
+      }
+      if(!id){alert("Für diesen Chat gibt es keine Cloud.");return;}
+      cl={id:String(id),name:CH.name,path:"",stack:[],back:{id:CH.id,canPost:CH.canPost,name:CH.name,ch:CH.ch}};
+      go("cloud");
+    }catch(e){alert("Cloud konnte nicht geöffnet werden: "+e.message);}
+    finally{bt.disabled=false;}
+  };
   if($("#older"))new IntersectionObserver(async(es,io)=>{
     if(!es[0].isIntersecting||CH.busy)return;CH.busy=true;io.disconnect();$("#older").innerHTML='<div class="spin s"></div>';
     try{
@@ -1958,7 +1985,17 @@ async function cloud(){
       (fl.map((f,i)=>{const m=f.meta||{},dir=f.file_type==="folder"||f.type==="folder"||f.type==="directory";
         const th=m.has_image&&(m.thumbnail_uri||m.content_uri);
         return `<div class="crow" data-f="${i}"><div class="av" style="border-radius:12px;overflow:hidden">${th?`<img data-src="${esc(th)}" style="width:100%;height:100%;object-fit:cover">`:ic(dir?"folder":"file")}</div><div style="min-width:0"><b style="word-break:break-word">${esc(f.name)}</b><div class="mu">${dir?"Ordner":fsize(f.size||0)} · ${new Date(f.updated_at).toLocaleDateString("de-DE")}</div></div></div>`;}).join("")||'<p class="mu">Keine Dateien.</p>'));
-    $("#cb_").onclick=()=>{if(cl.stack.length){cl.path=cl.stack.pop();}else cl.id=null;cloud();};
+    $("#cb_").onclick=()=>{
+      if(cl.stack.length){cl.path=cl.stack.pop();}
+      else if(cl.back){
+        const b=cl.back;cl={id:null,name:"",path:"",stack:[]};
+        history.replaceState(null,"","#chats");
+        document.querySelectorAll("nav a[data-p]").forEach(a=>a.classList.toggle("on",a.dataset.p==="chats"));
+        document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.t==="chats"));
+        openChat(b.id,b.canPost,b.name,b.ch);return;
+      }
+      else cl.id=null;
+      cloud();};
     $("#fs").onchange=e=>{sessionStorage.setItem("fq",e.target.value);cloud();};
     document.querySelectorAll("[data-f]").forEach(el=>el.onclick=()=>{
       const f=fl[+el.dataset.f],m=f.meta||{};
