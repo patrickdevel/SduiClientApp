@@ -483,14 +483,19 @@ body.inchat::before{display:none}
 .cr2 .cm{min-width:0;flex:1}
 .cr2 .cn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crow>div:nth-child(2){min-width:0}
-.ncbar{display:flex;align-items:center;gap:8px;min-height:48px}
-.ncbar h2{flex:1;text-align:center;margin:0;font-size:18px}
-.ncbar .ib:last-child{margin-left:auto}
-.ncbar h2+.ib,.ncbar input+.ib{flex:none}
-.ncbar input{flex:1;min-width:0;border:0;background:#ececf1;border-radius:14px;padding:11px 14px;font-size:16px;color:var(--tx);outline:none}
-.ncbar #nb{flex:none}
 .av3{font-size:13px;font-weight:600}
 .ncs .warn{display:flex}
+.ncbar{position:relative;display:flex;align-items:center;gap:8px;height:48px}
+.ncbar .ib{width:40px;height:40px;flex:none;position:relative}
+.ncbar h2{flex:1;text-align:center;margin:0;font-size:18px;line-height:48px;transition:opacity .2s ease}
+.ncbar .ncf{position:absolute;left:48px;right:48px;top:0;bottom:0;margin:0;height:48px;padding:0 14px;display:flex;align-items:center;gap:8px;opacity:0;transform:scaleX(.15);transform-origin:right center;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .2s ease}
+.ncbar .ncf input{flex:1;min-width:0;border:0;background:transparent;padding:0;font-size:16px;outline:none;color:var(--tx)}
+.ncbar.open .ncf{opacity:1;transform:none;pointer-events:auto}
+.ncbar.open h2{opacity:0}
+.ncx span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .2s ease,transform .3s ease}
+.ncx .i2{opacity:0;transform:rotate(-90deg)}
+.ncbar.open .ncx .i1{opacity:0;transform:rotate(90deg)}
+.ncbar.open .ncx .i2{opacity:1;transform:none}
 </style>
 </head>
 <body>
@@ -1483,6 +1488,7 @@ const cid=c=>String(c.chat?.id||c.id);
 const CLOUDOF={};
 function chatRow(c,inact){
   const n=c.meta?.displayname||c.code,id=cid(c),post=c.chat?.can?.["post-message"]===0?0:1;
+  CHATCACHE.set(String(id),c);
   {const cc=c.cloud?.id||c.cloud_id;if(cc){CLOUDOF[id]=cc;CLOUDOF[String(c.id)]=cc;}}
   const pin=LS("sdui_pins").includes(id),ar=LS("sdui_arch").includes(id),mk=LS("sdui_unread").includes(id);
   const raw=c.chat?.last_message||c.last_message,lm=raw&&!isDel(raw)?raw:{},who=lm.user?.meta?.displayname||"";
@@ -1640,17 +1646,34 @@ async function contactsMore(st){
   }
   st.done=true;return fresh;
 }
-async function findChatWith(name){
+const CHATCACHE=new Map();
+async function findChatWith(name,uid){
+  const toks=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(Boolean);
+  const sub=(x,y)=>x.length>0&&x.every(t=>y.includes(t));
+  const same=(a,b)=>{const A=toks(a),B=toks(b);return sub(A,B)||sub(B,A);};
+  const pick=l=>{
+    const cand=l.filter(c=>{
+      const n=c.meta?.displayname||c.code;
+      return (uid!=null&&c.user_id!=null&&String(c.user_id)===String(uid))||same(n,name);
+    }).filter(c=>c.users_count==null||c.users_count<=2);
+    return cand.sort((x,y)=>(y.users_count===2)-(x.users_count===2))[0]||null;
+  };
+  const open=c=>{
+    const post=c.chat?.can?.["post-message"]===0?0:1;
+    openChat(String(cid(c)),post===1,c.meta?.displayname||c.code||name,String(c.id));return true;
+  };
+  const keep=l=>l.forEach(x=>CHATCACHE.set(String(cid(x)),x));
+  let c=pick([...CHATCACHE.values()]);
+  if(c)return open(c);
   try{
-    const norm=t=>String(t||"").trim().toLowerCase();
-    const l=await api_.chats(1,name,50);
-    const c=l.find(c=>norm(c.meta?.displayname||c.code)===norm(name)&&(c.users_count==null||c.users_count<=2));
-    if(c){const post=c.chat?.can?.["post-message"]===0?0:1;openChat(String(cid(c)),post===1,c.meta?.displayname||c.code||name,String(c.id));return true;}
+    const last=toks(name).pop()||name;
+    for(const q of [name,last]){const l=await api_.chats(1,q,50);keep(l);c=pick(l);if(c)return open(c);}
+    for(let pg=1;pg<=6;pg++){const l=await api_.chats(pg,"",50);if(!l.length)break;keep(l);c=pick(l);if(c)return open(c);}
   }catch(_){}
   return false;
 }
 async function startChat(id,name){
-  if(await findChatWith(name))return;
+  if(await findChatWith(name,id))return;
   const nid=/^\d+$/.test(String(id))?Number(id):id,sid=String(id);
   const fd=(...kv)=>()=>{const f=new FormData();kv.forEach(([k,v])=>f.append(k,v));return f;};
   const js=o=>()=>o;
@@ -1680,7 +1703,7 @@ async function startChat(id,name){
     }
   }
   console.warn("Chat erstellen fehlgeschlagen\n"+log.join("\n"));
-  if(await findChatWith(name))return;
+  if(await findChatWith(name,id))return;
   alert("Mit "+name+" konnte kein neuer Chat erstellt werden.\n\nSdui lehnt die Anfrage ab. Das kann an fehlenden Rechten liegen oder daran, dass die API das so nicht zulässt. Wenn du den Chat einmal in der Sdui-App oder im Sdui-Web startest, erscheint er hier in der Liste und du kannst ihn weiterverwenden.");
 }
 let NCIO=null;
@@ -1708,21 +1731,18 @@ async function newChat(){
   };
   NCIO=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))more();},{rootMargin:"400px"});
   draw();more();
-  const bar=srch=>{
-    const bx=$("#ncbar");if(!bx)return;
-    if(!srch){
-      bx.innerHTML=`<button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2>Neuer Chat</h2><button class="ib" id="nsb" aria-label="Suchen">${ic("search")}</button>`;
-      $("#nb").onclick=()=>go("chats");
-      $("#nsb").onclick=()=>bar(true);
-    }else{
-      bx.innerHTML=`<button class="ib" id="nb" aria-label="Suche schließen">${ic("left")}</button><input id="us" placeholder="Suchen" autocomplete="off" value="${esc(q)}"><button class="ib" id="nsx" aria-label="Leeren">${ic("x")}</button>`;
-      const inp=$("#us");inp.focus();
-      inp.oninput=e=>{q=e.target.value.trim();draw();};
-      $("#nsx").onclick=()=>{inp.value="";q="";draw();inp.focus();};
-      $("#nb").onclick=()=>{q="";draw();bar(false);};
-    }
+  const bx=$("#ncbar");
+  bx.innerHTML=`<button class="ib" id="nb" aria-label="Zurück">${ic("left")}</button><h2>Neuer Chat</h2><label class="sbox ncf" id="ncf">${ic("search")}<input id="us" placeholder="Suchen" autocomplete="off"></label><button class="ib ncx" id="nsb" aria-label="Suche öffnen oder schließen"><span class="i1">${ic("search")}</span><span class="i2">${ic("x")}</span></button>`;
+  const inp=$("#us");
+  const setOpen=o=>{
+    bx.classList.toggle("open",o);
+    if(o)setTimeout(()=>inp.focus(),160);
+    else{inp.blur();inp.value="";q="";draw();}
   };
-  bar(false);
+  $("#nb").onclick=()=>go("chats");
+  $("#nsb").onclick=()=>setOpen(!bx.classList.contains("open"));
+  inp.oninput=e=>{q=e.target.value.trim();draw();};
+  inp.onkeydown=e=>{if(e.key==="Escape")setOpen(false);};
   $("#ul").onclick=e=>{const r=e.target.closest("[data-u]");if(r)startChat(r.dataset.u,r.dataset.n);};
 }
 function newsCard(n){
